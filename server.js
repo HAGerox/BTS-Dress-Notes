@@ -234,12 +234,18 @@ if (midiInput) {
 }
 
 // WebSocket connections
+// WebSocket connections
 io.on('connection', (socket) => {
     console.log('Client connected:', socket.id);
     
+    // Get client IP address
+    const clientIP = socket.handshake.address;
+    // For IPv6 format (::ffff:192.168.1.1), extract the IPv4 part
+    const userIP = clientIP.replace(/^.*:/, '');
+    
     const user = {
         id: socket.id,
-        name: `User${Math.floor(Math.random() * 1000)}`,
+        name: userIP, // Set default name to IP address
         isTyping: false,
         currentTimecode: null,
         currentLxCue: null,
@@ -261,6 +267,9 @@ io.on('connection', (socket) => {
         mtcMessagesReceived: mtcMessagesReceived,
         oscAvailable: !!oscServer
     });
+
+    // Send the user their initial name (IP address)
+    socket.emit('user-initial-name', userIP);
 
     // Notify about new user joining
     io.emit('user-joined', {

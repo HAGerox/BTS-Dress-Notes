@@ -2225,7 +2225,7 @@
                 const frameRate = tc.frameRate || 30;
                 
                 return hours * 3600 + minutes * 60 + seconds + frames / frameRate;
-            }
+            }            
             // Chat functionality
             function updateChatMessages() {
                 chatCount.textContent = `${chatMessagesList.length} shitpost${chatMessagesList.length !== 1 ? 's' : ''}`;
@@ -2235,9 +2235,9 @@
                     return;
                 }
                 
-                // Sort by timestamp (newest first)
+                // Sort by timestamp (oldest first) - FIXED
                 const sortedMessages = [...chatMessagesList].sort((a, b) => 
-                    new Date(b.timestamp) - new Date(a.timestamp)
+                    new Date(a.timestamp) - new Date(b.timestamp)
                 );
                 
                 chatMessages.innerHTML = sortedMessages.map(msg => {
@@ -2255,7 +2255,7 @@
                     `;
                 }).join('');
                 
-                // Auto-scroll to bottom
+                // Auto-scroll to bottom to show latest messages - FIXED
                 setTimeout(() => {
                     chatMessages.scrollTop = chatMessages.scrollHeight;
                 }, 100);
