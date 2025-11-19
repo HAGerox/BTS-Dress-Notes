@@ -70,6 +70,7 @@ const globalState = {
         source: 'midi'
     },
     notes: [],
+    chatMessages: [],
     users: new Map(),
     timeMode: 'midi',
     tags: tags,
