@@ -25,6 +25,10 @@ app.get('/overlay.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'overlay.html'));
 });
 
+app.get('/favicon.ico', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'favicon.ico'));
+});
+
 // Load tags from JSON file
 let tags = [];
 try {
@@ -63,7 +67,7 @@ const globalState = {
         seconds: 0,
         frames: 0,
         frameRate: 30,
-        source: 'demo'
+        source: 'midi'
     },
     notes: [],
     users: new Map(),
@@ -626,49 +630,12 @@ function getRandomColor() {
     return colors[Math.floor(Math.random() * colors.length)];
 }
 
-// Demo mode
-let demoInterval;
-function startDemoMode() {
-    if (demoInterval) {
-        clearInterval(demoInterval);
-    }
-    
-    demoInterval = setInterval(() => {
-        globalState.timecode.frames++;
-        
-        let maxFrames = globalState.timecode.frameRate;
-        if (globalState.timecode.frameRate === 29.97) {
-            maxFrames = 30;
-        }
-        
-        if (globalState.timecode.frames >= maxFrames) {
-            globalState.timecode.frames = 0;
-            globalState.timecode.seconds++;
-        }
-        
-        if (globalState.timecode.seconds >= 60) {
-            globalState.timecode.seconds = 0;
-            globalState.timecode.minutes++;
-        }
-        
-        if (globalState.timecode.minutes >= 60) {
-            globalState.timecode.minutes = 0;
-            globalState.timecode.hours++;
-        }
-        
-        if (globalState.timecode.hours >= 24) {
-            globalState.timecode.hours = 0;
-        }
-        
-        globalState.timecode.source = 'demo';
-        io.emit('timecode-update', globalState.timecode);
-    }, 1000 / globalState.timecode.frameRate);
-}
-
-if (!midiInput) {
-    startDemoMode();
+if (midiInput) {
+    console.log('MIDI device detected - listening for timecode');
 } else {
-    console.log('MIDI device detected - demo mode disabled');
+    console.log('No MIDI devices detected - MIDI timecode disabled');
+    // Set time mode to realtime if no MIDI available
+    globalState.timeMode = 'realtime';
 }
 
 const PORT = process.env.PORT || 3000;
@@ -680,7 +647,6 @@ server.listen(PORT, () => {
 });
 
 process.on('SIGINT', () => {
-    if (demoInterval) clearInterval(demoInterval);
     if (midiInput) midiInput.close();
     if (oscServer) oscServer.close();
     process.exit();

@@ -1263,7 +1263,7 @@
             let currentGlobalLxCue = '1';
             
             let allNotes = [];
-            let timeMode = 'midi';
+            let timeMode = 'realtime';
             let realTimeInterval = null;
             let availableTags = [];
             let selectedTags = [];
@@ -1354,8 +1354,10 @@
             
             // Handle time mode toggle - GLOBAL CHANGE
             timeModeToggle.addEventListener('change', function() {
-                const newMode = this.checked ? 'realtime' : 'midi';
-                window.socket.emit('time-mode-change', newMode);
+                if (!this.disabled) { // Only allow change if not disabled
+                    const newMode = this.checked ? 'realtime' : 'midi';
+                    window.socket.emit('time-mode-change', newMode);
+                }
             });
             
             // Handle LX Cue input changes
@@ -1694,31 +1696,46 @@
                 if (data.midiAvailable && data.portCount > 0) {
                     midiStatus.textContent = `MIDI Interface: ${data.portCount} port(s) available - ${data.currentPort}`;
                     midiStatus.className = 'status-connected';
+                    
+                    // Enable MIDI time mode option
+                    timeModeToggle.disabled = false;
+                    midiLabel.style.opacity = '1';
+                    realtimeLabel.style.opacity = '1';
                 } else {
-                    midiStatus.textContent = 'MIDI Interface: No MIDI ports found - Running in demo mode';
-                    midiStatus.className = '';
+                    midiStatus.textContent = 'MIDI Interface: No MIDI devices found';
+                    midiStatus.className = 'status-disconnected';
+                    
+                    // Disable MIDI time mode option and force realtime mode
+                    timeModeToggle.disabled = true;
+                    timeModeToggle.checked = true; // Force to realtime
+                    midiLabel.style.opacity = '0.5';
+                    realtimeLabel.style.opacity = '1';
+                    
+                    // Update time mode display
+                    timeMode = 'realtime';
+                    updateTimeModeDisplay();
+                    
+                    // Notify server about forced time mode change
+                    window.socket.emit('time-mode-change', 'realtime');
                 }
                 
-                // OSC Status
+                // OSC Status (keep existing)
                 if (data.oscAvailable) {
                     oscStatus.textContent = 'LX Cues: OSC Source Active (Auto-updating)';
                     oscStatus.className = 'status-connected';
-                    
-                    // Disable manual LX cue input when OSC is active
                     lxCueInput.disabled = true;
                     lxCueInput.placeholder = 'Auto-updated via OSC';
                 } else {
                     oscStatus.textContent = 'LX Cues: Manual Input';
                     oscStatus.className = '';
-                    
-                    // Enable manual LX cue input
                     lxCueInput.disabled = false;
                     lxCueInput.placeholder = 'Cue Number';
                 }
             });
             
             window.socket.on('timecode-update', function(data) {
-                if (timeMode === 'midi') {
+                // Only process MIDI timecode if we're in MIDI mode AND data is from MIDI
+                if (timeMode === 'midi' && data.source === 'midi') {
                     currentGlobalTimecode = data;
                     currentUser.currentFrameRate = data.frameRate;
                     
@@ -1728,14 +1745,12 @@
                         updatePersonalTimecodeDisplay(data);
                     }
                     
-                    if (data.source === 'midi') {
-                        sourceBadge.textContent = 'LIVE MIDI';
-                        sourceBadge.className = 'source-badge source-midi';
-                    } else {
-                        sourceBadge.textContent = 'DEMO';
-                        sourceBadge.className = 'source-badge source-demo';
-                    }
+                    // Show MIDI source badge
+                    sourceBadge.textContent = 'LIVE MIDI';
+                    sourceBadge.className = 'source-badge source-midi';
+                    sourceBadge.style.display = 'inline-block';
                 }
+                // In realtime mode, we don't use server timecode updates
             });
             
             window.socket.on('notes-update', function(notes) {
