@@ -647,7 +647,7 @@ if (midiInput) {
     globalState.timeMode = 'realtime';
 }
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 80;
 server.listen(PORT, () => {
     console.log(`MIDI Timecode Notes Server running on http://localhost:${PORT}`);
     if (oscServer) {
