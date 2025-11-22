@@ -333,6 +333,13 @@
             </div>
             
             <div class="filter-section">
+                <div class="tags-label">Filter by Act:</div>
+                <div class="act-filter" id="recallActFilter">
+                    <div class="filter-tag active" data-act="all">All Acts</div>
+                    <div class="filter-tag" data-act="Preshow">Preshow</div>
+                </div>
+                
+                <div class="tags-label" style="margin-top: 1rem;">Filter by Tags:</div>
                 <div class="tags-label">Filter by Tags:</div>
                 <div class="filter-tags" id="filterTags">
                     <div class="filter-tag active" data-tag="all">All Notes</div>
@@ -366,10 +373,12 @@
             const notesList = document.getElementById('notesList');
             const totalNotes = document.getElementById('totalNotes');
             const filteredNotes = document.getElementById('filteredNotes');
+            const recallActFilter = document.getElementById('recallActFilter');
             
             let allNotes = [];
             let availableTags = [];
             let filterTag = 'all';
+            let filterAct = 'all';
             
             // Drag and drop functionality
             uploadArea.addEventListener('dragover', function(e) {
@@ -397,6 +406,18 @@
             fileInput.addEventListener('change', function() {
                 if (fileInput.files.length) {
                     handleFile(fileInput.files[0]);
+                }
+            });
+            recallActFilter.addEventListener('click', function(e) {
+                if (e.target.classList.contains('filter-tag')) {
+                    const actValue = e.target.getAttribute('data-act');
+                    filterAct = actValue;
+                    
+                    document.querySelectorAll('.act-filter .filter-tag').forEach(t => t.classList.remove('active'));
+                    e.target.classList.add('active');
+                    
+                    updateNotesList();
+                    updateStats();
                 }
             });
             
@@ -663,8 +684,9 @@
                     }).join('');
                     
                     return `
-                        <div class="note-item" data-tags="${(note.tags || []).join(',')}">
+                        <div class="note-item" data-tags="${(note.tags || []).join(',')}" data-act="${note.act || 'Preshow'}">
                             <div class="note-header">
+                                <span class="note-act">${note.act || 'Preshow'}</span>
                                 <span class="note-user">${note.user}</span>
                                 <span class="note-timecode">
                                     ${timecodeDisplay} 
@@ -683,11 +705,16 @@
             function updateStats() {
                 totalNotes.textContent = `Total: ${allNotes.length} notes`;
                 
-                let filteredCount = allNotes.length;
+                let filteredNotes = allNotes;
                 if (filterTag !== 'all') {
-                    filteredCount = allNotes.filter(note => 
+                    filteredNotes = filteredNotes.filter(note => 
                         note.tags && note.tags.includes(filterTag)
-                    ).length;
+                    );
+                }
+                if (filterAct !== 'all') {
+                    filteredNotes = filteredNotes.filter(note => 
+                        note.act === filterAct
+                    );
                 }
                 
                 filteredNotes.textContent = `Showing: ${filteredCount} notes`;
@@ -698,6 +725,35 @@
                     return '00:00:00:00';
                 }
                 return `${(tc.hours || 0).toString().padStart(2, '0')}:${(tc.minutes || 0).toString().padStart(2, '0')}:${(tc.seconds || 0).toString().padStart(2, '0')}:${(tc.frames || 0).toString().padStart(2, '0')}`;
+            }
+
+            function updateActFilter() {
+                // Get unique acts from imported notes
+                const uniqueActs = [...new Set(allNotes.map(note => note.act))].sort();
+                
+                const actFilterContainer = document.getElementById('recallActFilter');
+                actFilterContainer.innerHTML = '<div class="filter-tag active" data-act="all">All Acts</div>';
+                
+                uniqueActs.forEach(act => {
+                    const actElement = `
+                        <div class="filter-tag" data-act="${act}">${act}</div>
+                    `;
+                    actFilterContainer.innerHTML += actElement;
+                });
+                
+                // Re-attach event listeners
+                document.querySelectorAll('.act-filter .filter-tag').forEach(tag => {
+                    tag.addEventListener('click', function() {
+                        const actValue = this.getAttribute('data-act');
+                        filterAct = actValue;
+                        
+                        document.querySelectorAll('.act-filter .filter-tag').forEach(t => t.classList.remove('active'));
+                        this.classList.add('active');
+                        
+                        updateNotesList();
+                        updateStats();
+                    });
+                });
             }
             
             function getRandomColor() {

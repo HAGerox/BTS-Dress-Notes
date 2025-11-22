@@ -348,6 +348,8 @@
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            width: 100%;
+            text-align: left;
         }
 
         .comments-toggle:hover {
@@ -362,6 +364,15 @@
             font-weight: bold;
         }
 
+        .comments-toggle .arrow {
+            transition: transform 0.3s ease;
+            margin-left: auto;
+        }
+
+        .comments-toggle.expanded .arrow {
+            transform: rotate(180deg);
+        }
+
         .comments-container {
             display: none;
             max-height: 300px;
@@ -370,6 +381,15 @@
         }
 
         .comments-container.expanded {
+            display: block;
+        }
+
+        .comment-input-area {
+            display: none;
+            margin-top: 0.8rem;
+        }
+
+        .comment-input-area.expanded {
             display: block;
         }
 
@@ -402,15 +422,6 @@
         .comment-text {
             font-size: 0.9rem;
             line-height: 1.4;
-        }
-
-        .comment-input-area {
-            display: none;
-            margin-top: 0.8rem;
-        }
-
-        .comment-input-area.expanded {
-            display: block;
         }
 
         .comment-input {
@@ -955,21 +966,6 @@
             word-wrap: break-word;
         }
 
-        /* Remove comments toggle and always show comments */
-        .comments-toggle {
-            display: none !important;
-        }
-
-        .comments-container {
-            display: block !important;
-            max-height: none !important;
-        }
-
-        .comment-input-area {
-            display: block !important;
-            margin-top: 1rem;
-        }
-
         /* Adjust comments section for always-visible */
         .comments-section {
             margin-top: 1rem;
@@ -981,6 +977,74 @@
             max-height: 300px;
             overflow-y: auto;
             margin-bottom: 0.8rem;
+        }
+
+        /* Act Input Styles */
+        .act-input {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .act-input label {
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .act-input select {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+            padding: 0.5rem;
+            color: white;
+            font-size: 1rem;
+            width: 120px;
+        }
+
+        .act-input select:focus {
+            outline: none;
+            border-color: #4CAF50;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        /* Act Filter Styles */
+        .act-filter {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Note Act Display */
+        .note-act {
+            background: rgba(76, 175, 80, 0.3);
+            padding: 0.2rem 0.6rem;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-left: 1rem;
+        }
+
+        /* Act Display Styles */
+        .act-display {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .act-display label {
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        #currentActDisplay {
+            background: rgba(76, 175, 80, 0.3);
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            font-weight: bold;
+            border: 1px solid rgba(76, 175, 80, 0.5);
         }
 
         @media (max-width: 1200px) {
@@ -1090,6 +1154,10 @@
                         <input type="text" id="lxCueInput" placeholder="Cue Number">
                     </div>
                     
+                    <div class="act-display">
+                        <label>Current Act:</label>
+                        <span id="currentActDisplay">Preshow</span>
+                    </div>
                     <div class="tags-section">
                         <div class="tags-label">Add Tags:</div>
                         <div class="tags-container" id="tagsContainer">
@@ -1113,7 +1181,13 @@
             </div>
             
             <div class="filter-section">
-                <div class="tags-label">Filter by Tags:</div>
+                <div class="tags-label">Filter by Act:</div>
+                <div class="act-filter" id="actFilter">
+                    <div class="filter-tag active" data-act="all">All Acts</div>
+                    <div class="filter-tag" data-act="Preshow">Preshow</div>
+                </div>
+                
+                <div class="tags-label" style="margin-top: 1rem;">Filter by Tags:</div>
                 <div class="filter-tags" id="filterTags">
                     <div class="filter-tag active" data-tag="all">All Notes</div>
                     <!-- Filter tags will be populated by JavaScript -->
@@ -1219,6 +1293,9 @@
             // Tag elements
             const tagsContainer = document.getElementById('tagsContainer');
             const filterTagsContainer = document.getElementById('filterTags');
+            const currentActDisplay = document.getElementById('currentActDisplay');
+            let currentAct = 'Preshow'; // Track current act locally
+            const actFilter = document.getElementById('actFilter');
             
             // Edit tags modal elements
             const editTagsModal = document.getElementById('editTagsModal');
@@ -1237,7 +1314,7 @@
             const chatUserName = document.getElementById('chatUserName');
 
             let chatMessagesList = [];
-            let expandedComments = new Set(); // Track which note comments are expanded
+            let expandedCommentSections = new Set(); // Track which note comments are expanded
             
             // Existing variable declarations
             let currentUser = {
@@ -1265,6 +1342,7 @@
             let availableTags = [];
             let selectedTags = [];
             let filterTag = 'all';
+            let filterAct = 'all';
             let currentlyEditingNoteId = null;
             let editTagsSelected = [];
             let autoResumeTimer = null;
@@ -1591,21 +1669,43 @@
                         filterNotes();
                     });
                 });
+
+                // Act filter event listeners
+                document.querySelectorAll('.act-filter .filter-tag').forEach(tag => {
+                    tag.addEventListener('click', function() {
+                        const actValue = this.getAttribute('data-act');
+                        filterAct = actValue;
+                        
+                        document.querySelectorAll('.act-filter .filter-tag').forEach(t => t.classList.remove('active'));
+                        this.classList.add('active');
+                        
+                        filterNotes();
+                    });
+                });
             }
             
             function filterNotes() {
                 const noteItems = document.querySelectorAll('.note-item');
                 noteItems.forEach(item => {
-                    if (filterTag === 'all') {
-                        item.style.display = 'block';
-                    } else {
+                    let showNote = true;
+                    
+                    // Tag filtering
+                    if (filterTag !== 'all') {
                         const itemTags = item.getAttribute('data-tags').split(',');
-                        if (itemTags.includes(filterTag)) {
-                            item.style.display = 'block';
-                        } else {
-                            item.style.display = 'none';
+                        if (!itemTags.includes(filterTag)) {
+                            showNote = false;
                         }
                     }
+                    
+                    // Act filtering
+                    if (filterAct !== 'all') {
+                        const itemAct = item.getAttribute('data-act');
+                        if (itemAct !== filterAct) {
+                            showNote = false;
+                        }
+                    }
+                    
+                    item.style.display = showNote ? 'block' : 'none';
                 });
             }
             
@@ -1654,6 +1754,19 @@
             
             window.socket.on('name-change-success', function(data) {
                 userStatus.textContent = data.message;
+                setTimeout(() => {
+                    if (!currentUser.isTyping) {
+                        userStatus.textContent = 'Ready to take notes';
+                    }
+                }, 3000);
+            });
+
+            window.socket.on('act-update', function(act) {
+                currentAct = act;
+                currentActDisplay.textContent = act;
+                
+                // Optional: show a notification when act changes
+                userStatus.textContent = `Act changed to: ${act}`;
                 setTimeout(() => {
                     if (!currentUser.isTyping) {
                         userStatus.textContent = 'Ready to take notes';
@@ -1843,9 +1956,10 @@
                         timecode: currentUser.frozenTimecode,
                         lxCue: currentUser.frozenLxCue,
                         frameRate: timeMode === 'realtime' ? 'ms' : currentUser.currentFrameRate,
-                        tags: selectedTags
+                        tags: selectedTags,
                     });
                     
+                    // Reset form
                     noteInput.value = '';
                     sendNoteBtn.disabled = true;
                     currentUser.isTyping = false;
@@ -1854,10 +1968,12 @@
                     personalTimecodeContainer.classList.remove('frozen');
                     userStatus.textContent = 'Note sent! Ready for next note.';
                     
+                    // Reset tags and act
                     selectedTags = [];
                     document.querySelectorAll('.tag-checkbox:checked').forEach(checkbox => {
                         checkbox.checked = false;
                     });
+                    actSelect.value = 'Preshow'; // Reset to default
                     
                     window.socket.emit('typing-stop');
                     clearAutoResumeTimer();
@@ -1938,12 +2054,19 @@
                             Last edited by ${note.lastEditedBy || 'unknown'} at ${new Date(note.lastEdited).toLocaleTimeString()}
                         </div>` : '';
                     
-                    // Comments section
+                    // Check if this note's comments should be expanded
+                    const isCommentsExpanded = expandedCommentSections.has(note.id);
                     const commentCount = note.comments ? note.comments.length : 0;
-                    // Comments section (always visible)
+                    
+                    // Comments section (conditionally expanded)
                     const commentsSection = `
                         <div class="comments-section">
-                            <div class="comments-container" id="comments-${note.id}">
+                            <button class="comments-toggle ${isCommentsExpanded ? 'expanded' : ''}" data-note-id="${note.id}">
+                                <span>Comments</span>
+                                <span class="count">${commentCount}</span>
+                                <span class="arrow">▼</span>
+                            </button>
+                            <div class="comments-container ${isCommentsExpanded ? 'expanded' : ''}" id="comments-${note.id}">
                                 ${note.comments ? note.comments.map(comment => `
                                     <div class="comment-item" data-comment-id="${comment.id}">
                                         <div class="comment-header">
@@ -1966,7 +2089,7 @@
                                     </div>
                                 `).join('') : ''}
                             </div>
-                            <div class="comment-input-area" id="comment-input-${note.id}">
+                            <div class="comment-input-area ${isCommentsExpanded ? 'expanded' : ''}" id="comment-input-${note.id}">
                                 <textarea class="comment-input" placeholder="Add a comment..." data-note-id="${note.id}"></textarea>
                                 <div class="comment-actions">
                                     <button class="small secondary cancel-comment" data-note-id="${note.id}">Cancel</button>
@@ -1977,13 +2100,14 @@
                     `;
                     
                     return `
-                        <div class="note-item" data-tags="${note.tags.join(',')}">
+                        <div class="note-item" data-tags="${note.tags.join(',')}" data-act="${note.act || 'Preshow'}">
                             <div class="note-header">
+                                <span class="note-act">${note.act || 'Preshow'}</span>
                                 <span class="note-user">${note.user}</span>
                                 <span class="note-timecode">
                                     ${timecodeDisplay} 
                                     <span class="note-lx-cue">LX: ${note.lxCue || 'N/A'}</span>
-                                    @ ${note.frameRate === 'ms' ? 'milliseconds' : note.frameRate + 'fps'}
+                                    @ ${note.frameRate || '30 fps'}
                                 </span>
                             </div>
                             <div class="note-text">
@@ -2000,7 +2124,7 @@
                         </div>
                     `;
                 }).join('');
-                
+
                 // Add event listeners for edit tags buttons
                 document.querySelectorAll('.edit-tags-btn').forEach(button => {
                     button.addEventListener('click', function() {
@@ -2048,7 +2172,7 @@
                     });
                 });
                 
-                // Add event listeners for comments
+                // Add event listeners for comments toggle
                 document.querySelectorAll('.comments-toggle').forEach(button => {
                     button.addEventListener('click', function() {
                         const noteId = this.getAttribute('data-note-id');
@@ -2056,11 +2180,17 @@
                         const commentInputArea = document.getElementById(`comment-input-${noteId}`);
                         
                         if (commentsContainer.classList.contains('expanded')) {
+                            // Collapse
                             commentsContainer.classList.remove('expanded');
                             commentInputArea.classList.remove('expanded');
+                            this.classList.remove('expanded');
+                            expandedCommentSections.delete(noteId); // Remove from tracking
                         } else {
+                            // Expand
                             commentsContainer.classList.add('expanded');
                             commentInputArea.classList.add('expanded');
+                            this.classList.add('expanded');
+                            expandedCommentSections.add(noteId); // Add to tracking
                         }
                     });
                 });
@@ -2191,6 +2321,8 @@
                         submitBtn.disabled = true;
                     });
                 });
+
+                updateActFilter();
                 
                 filterNotes();
                 
@@ -2209,9 +2341,13 @@
                         text: text
                     });
                     
+                    // Clear the input but keep the section expanded
                     commentInput.value = '';
                     const submitBtn = document.querySelector(`.submit-comment[data-note-id="${noteId}"]`);
                     submitBtn.disabled = true;
+                    
+                    // Ensure the comments section stays expanded by adding to our tracking set
+                    expandedCommentSections.add(noteId);
                 }
             }
             
@@ -2301,6 +2437,34 @@
             // Update chat username when name changes
             function updateChatUserName() {
                 chatUserName.textContent = currentUser.name;
+            }
+
+            function updateActFilter() {
+                // Get unique acts from all notes
+                const uniqueActs = [...new Set(allNotes.map(note => note.act))].sort();
+                
+                const actFilterContainer = document.getElementById('actFilter');
+                actFilterContainer.innerHTML = '<div class="filter-tag active" data-act="all">All Acts</div>';
+                
+                uniqueActs.forEach(act => {
+                    const actElement = `
+                        <div class="filter-tag" data-act="${act}">${act}</div>
+                    `;
+                    actFilterContainer.innerHTML += actElement;
+                });
+                
+                // Re-attach event listeners
+                document.querySelectorAll('.act-filter .filter-tag').forEach(tag => {
+                    tag.addEventListener('click', function() {
+                        const actValue = this.getAttribute('data-act');
+                        filterAct = actValue;
+                        
+                        document.querySelectorAll('.act-filter .filter-tag').forEach(t => t.classList.remove('active'));
+                        this.classList.add('active');
+                        
+                        filterNotes();
+                    });
+                });
             }
             
             // Initial state

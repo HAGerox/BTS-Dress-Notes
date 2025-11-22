@@ -74,7 +74,8 @@ const globalState = {
     users: new Map(),
     timeMode: 'midi',
     tags: tags,
-    currentLxCue: '1' // Start with cue 1
+    currentLxCue: '1',
+    currentAct: 'Preshow' // Add current act with default
 };
 
 // Try to use EasyMIDI
@@ -120,10 +121,8 @@ try {
         // Messages we're interested in:
         // /eos/out/active/cue/text,1/199 B/O 1.0 2%
         // /eos/out/pending/cue/text,1/201 Start 1.0
-        
         const address = msg[0];
         const value = msg[1];
-        
         if (address === '/eos/out/active/cue/text' && value) {
             // Extract cue name from value like "1/199 B/O 1.0 2%"
             const cueMatch = value.match(/[^/]+\/(.+)/);
@@ -148,6 +147,13 @@ try {
                 // globalState.currentLxCue = `Pending: ${cueName}`;
                 // io.emit('lx-cue-update', `Pending: ${cueName}`);
             }
+        } else if (address.startsWith('/bts/')) {
+            const act = value;
+            if (act && act !== globalState.currentAct) {
+                globalState.currentAct = act;
+                console.log(`Updated current act to: ${act}`);
+                io.emit('act-update', act);
+            }
         }
     });
 
@@ -171,6 +177,15 @@ const frameRates = {
     2: 29.97,
     3: 30
 };
+
+function extractActFromOSCAddress(address) {
+    // Example address: /bts/act/Act 1/start
+    const actMatch = address.match(/\/bts\/act\/([^\/]+)\//);
+    if (actMatch && actMatch[1]) {
+        return actMatch[1].replace(/_/g, ' ').trim(); // Replace underscores with spaces
+    }
+    return null;
+}
 
 function parseEasyMIDIMTC(messageType, value) {
     quarterFrameData[messageType] = value;
@@ -239,7 +254,6 @@ if (midiInput) {
 }
 
 // WebSocket connections
-// WebSocket connections
 io.on('connection', (socket) => {
     console.log('Client connected:', socket.id);
     
@@ -265,6 +279,7 @@ io.on('connection', (socket) => {
     globalState.users.set(socket.id, user);
 
     // Send current state to newly connected client
+    socket.emit('act-update', globalState.currentAct);
     socket.emit('timecode-update', globalState.timecode);
     socket.emit('notes-update', globalState.notes);
     socket.emit('tags-update', globalState.tags);
@@ -386,7 +401,7 @@ io.on('connection', (socket) => {
     
     // Handle note submission (only for non-overlay users)
     socket.on('note-submit', (data) => {
-        if (user.isOverlay) return; // Overlay users can't submit notes
+        if (user.isOverlay) return;
         
         const noteTimecode = data.timecode || {...globalState.timecode};
         
@@ -400,7 +415,8 @@ io.on('connection', (socket) => {
             timestamp: new Date().toISOString(),
             frameRate: data.frameRate || globalState.timecode.frameRate,
             tags: data.tags || [],
-            comments: [] // Initialize empty comments array
+            act: globalState.currentAct, // Use current act from OSC
+            comments: []
         };
         
         globalState.notes.push(note);
@@ -571,13 +587,14 @@ io.on('connection', (socket) => {
                     name: u.name,
                     joinedAt: u.joinedAt
                 })),
-                tags: globalState.tags
+                tags: globalState.tags,
+                acts: availableActs // Include available acts in export
             };
             data = JSON.stringify(exportData, null, 2);
             mimeType = 'application/json';
             filename = `timecoded-notes-${timestamp}.json`;
         } else if (format === 'csv') {
-            let csvContent = 'User,Timecode,LX Cue,Frame Rate,Note,Tags,Comments,Timestamp\n';
+            let csvContent = 'User,Timecode,LX Cue,Frame Rate,Act,Note,Tags,Comments,Timestamp\n';
             
             globalState.notes.forEach(note => {
                 const commentsStr = note.comments ? note.comments.map(c => `${c.user}: ${c.text}`).join('; ') : '';
@@ -586,6 +603,7 @@ io.on('connection', (socket) => {
                     `"${formatTimecode(note.timecode)}"`,
                     `"${note.lxCue || ''}"`,
                     `"${note.frameRate}"`,
+                    `"${note.act || 'Preshow'}"`, // Add act to CSV
                     `"${note.text.replace(/"/g, '""')}"`,
                     `"${note.tags.join(', ')}"`,
                     `"${commentsStr}"`,
