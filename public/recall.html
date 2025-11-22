@@ -729,7 +729,7 @@
 
             function updateActFilter() {
                 // Get unique acts from imported notes
-                const uniqueActs = [...new Set(allNotes.map(note => note.act))].sort();
+                const uniqueActs = [...new Set(allNotes.map(note => note.act))];
                 
                 const actFilterContainer = document.getElementById('recallActFilter');
                 actFilterContainer.innerHTML = '<div class="filter-tag active" data-act="all">All Acts</div>';

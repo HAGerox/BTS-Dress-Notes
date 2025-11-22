@@ -107,7 +107,7 @@ try {
     console.log('EasyMIDI not available:', error.message);
 }
 
-// OSC Server for LX Cues
+// OSC Server for LX Cues and scenes from qlab
 let oscServer = null;
 try {
     const { Server } = require('node-osc');
@@ -177,15 +177,6 @@ const frameRates = {
     2: 29.97,
     3: 30
 };
-
-function extractActFromOSCAddress(address) {
-    // Example address: /bts/act/Act 1/start
-    const actMatch = address.match(/\/bts\/act\/([^\/]+)\//);
-    if (actMatch && actMatch[1]) {
-        return actMatch[1].replace(/_/g, ' ').trim(); // Replace underscores with spaces
-    }
-    return null;
-}
 
 function parseEasyMIDIMTC(messageType, value) {
     quarterFrameData[messageType] = value;

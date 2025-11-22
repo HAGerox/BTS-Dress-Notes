@@ -2441,7 +2441,7 @@
 
             function updateActFilter() {
                 // Get unique acts from all notes
-                const uniqueActs = [...new Set(allNotes.map(note => note.act))].sort();
+                const uniqueActs = [...new Set(allNotes.map(note => note.act))];
                 
                 const actFilterContainer = document.getElementById('actFilter');
                 actFilterContainer.innerHTML = '<div class="filter-tag active" data-act="all">All Acts</div>';
