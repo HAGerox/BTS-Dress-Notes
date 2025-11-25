@@ -1039,6 +1039,29 @@
             color: #4CAF50;
         }
 
+        /* Ensure name modal is always on top and can't be missed */
+        #nameModal {
+            z-index: 10000 !important;
+        }
+
+        #nameModal .modal-content {
+            position: relative;
+            animation: pulse-warning 2s infinite;
+        }
+
+        @keyframes pulse-warning {
+            0% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 152, 0, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0); }
+        }
+
+        /* Make the name input more prominent */
+        .name-input {
+            font-size: 1.3rem !important;
+            padding: 1.2rem !important;
+            border: 2px solid #4CAF50 !important;
+        }
+
         #currentActDisplay {
             background: rgba(76, 175, 80, 0.3);
             padding: 0.5rem 1rem;
@@ -1316,6 +1339,9 @@
             let chatMessagesList = [];
             let expandedCommentSections = new Set(); // Track which note comments are expanded
             
+            let nameTimeout = null;
+            let nameSet = false;
+
             // Existing variable declarations
             let currentUser = {
                 name: 'Guest',
@@ -1368,6 +1394,102 @@
             }
 
             initializeTags();
+
+            function startNameTimeout() {
+                // Clear any existing timeout
+                if (nameTimeout) {
+                    clearTimeout(nameTimeout);
+                }
+                
+                // Set 10 minute warning (600,000 milliseconds)
+                const warningTimeout = setTimeout(() => {
+                    if (!nameSet && nameModal.style.display !== 'none') {
+                        showNameWarning();
+                    }
+                }, 600000); // 10 minutes
+                
+                // Set 15 minute auto-close (900,000 milliseconds)
+                nameTimeout = setTimeout(() => {
+                    clearTimeout(warningTimeout);
+                    if (!nameSet) {
+                        autoCloseTab();
+                    }
+                }, 900000); // 15 minutes
+            }
+
+            function autoCloseTab() {
+                // Create a full-screen overlay with warning message
+                const overlay = document.createElement('div');
+                overlay.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.95);
+                    color: white;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    align-items: center;
+                    z-index: 10000;
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    text-align: center;
+                    padding: 2rem;
+                `;
+                
+                overlay.innerHTML = `
+                    <h1 style="font-size: 2.5rem; margin-bottom: 1rem; color: #ff9800;">Session Expired</h1>
+                    <p style="font-size: 1.2rem; margin-bottom: 2rem; max-width: 500px;">
+                        You didn't set a display name within 15 minutes. This tab will close automatically.
+                    </p>
+                    <div style="display: flex; gap: 1rem;">
+                        <button id="setNameNow" style="padding: 1rem 2rem; background: #4CAF50; color: white; border: none; border-radius: 5px; font-size: 1.1rem; cursor: pointer;">
+                            Set Name Now
+                        </button>
+                        <button id="closeNow" style="padding: 1rem 2rem; background: #f44336; color: white; border: none; border-radius: 5px; font-size: 1.1rem; cursor: pointer;">
+                            Close Now
+                        </button>
+                    </div>
+                `;
+                
+                document.body.appendChild(overlay);
+                
+                // Add event listeners to buttons
+                document.getElementById('setNameNow').addEventListener('click', () => {
+                    document.body.removeChild(overlay);
+                    nameModal.style.display = 'flex';
+                    nameInput.focus();
+                    // Restart the timer
+                    startNameTimeout();
+                });
+                
+                document.getElementById('closeNow').addEventListener('click', () => {
+                    window.close();
+                });
+                
+                // Auto-close after 30 seconds if no action
+                setTimeout(() => {
+                    if (document.body.contains(overlay)) {
+                        window.close();
+                    }
+                }, 30000);
+            }
+
+            function showNameWarning() {
+                // Add warning class to modal for pulsing effect
+                nameModal.classList.add('warning');
+                
+                // Add warning message to the name modal
+                const warningElement = document.createElement('div');
+                warningElement.id = 'nameWarning';
+                warningElement.innerHTML = '⚠️ Please set your name soon. This tab will close in 5 minutes if no name is set.';
+                
+                const modalContent = document.querySelector('.modal-content');
+                if (modalContent && !document.getElementById('nameWarning')) {
+                    modalContent.appendChild(warningElement);
+                }
+            }
             
             // Show name modal on load
             nameModal.style.display = 'flex';
@@ -1392,6 +1514,21 @@
                     updateChatUserName();
                     currentUserName.textContent = name;
                     nameModal.style.display = 'none';
+                    nameSet = true; // Mark name as set
+                    
+                    // Remove warning if it exists
+                    nameModal.classList.remove('warning');
+                    const warningElement = document.getElementById('nameWarning');
+                    if (warningElement) {
+                        warningElement.remove();
+                    }
+                    
+                    // Clear the auto-close timeout
+                    if (nameTimeout) {
+                        clearTimeout(nameTimeout);
+                        nameTimeout = null;
+                    }
+                    
                     window.socket.emit('user-name-change', name);
                 } else {
                     alert('Please enter a name');
@@ -1423,6 +1560,8 @@
                     currentUser.name = newName.trim();
                     updateChatUserName();
                     currentUserName.textContent = currentUser.name;
+                    nameSet = true; // Ensure flag remains set
+                    
                     window.socket.emit('user-name-change', currentUser.name);
                 }
             });
@@ -2468,6 +2607,7 @@
             }
             
             // Initial state
+            startNameTimeout();
             updateGlobalTimecodeDisplay(currentGlobalTimecode);
             updatePersonalTimecodeDisplay(currentGlobalTimecode);
             updateGlobalLxCueDisplay(currentGlobalLxCue);

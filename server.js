@@ -73,7 +73,8 @@ const globalState = {
     timeMode: 'midi',
     tags: tags,
     currentLxCue: '1',
-    currentAct: 'Preshow' // Add current act with default
+    currentAct: 'Preshow',
+    anonymousUsers: new Map()
 };
 
 // Try to use EasyMIDI
@@ -315,26 +316,43 @@ process.on('SIGINT', () => {
 io.on('connection', (socket) => {
     console.log('Client connected:', socket.id);
     
-    // Get client IP address
     const clientIP = socket.handshake.address;
-    // For IPv6 format (::ffff:192.168.1.1), extract the IPv4 part
     const userIP = clientIP.replace(/^.*:/, '');
-    
-    // Check if this is an overlay connection (from overlay.html)
     const isOverlay = socket.handshake.headers.referer && 
                      socket.handshake.headers.referer.includes('overlay.html');
     
     const user = {
         id: socket.id,
-        name: isOverlay ? `Overlay-${userIP}` : userIP, // Set default name to IP address
+        name: isOverlay ? `Overlay-${userIP}` : userIP,
         isTyping: false,
         currentTimecode: null,
         currentLxCue: null,
         joinedAt: new Date(),
-        isOverlay: isOverlay // Flag to identify overlay users
+        isOverlay: isOverlay,
+        isAnonymous: !isOverlay // Regular users start as anonymous until they set a name
     };
     
     globalState.users.set(socket.id, user);
+    
+    // Track anonymous users for cleanup
+    if (!isOverlay) {
+        globalState.anonymousUsers.set(socket.id, {
+            joinedAt: new Date(),
+            ip: userIP
+        });
+        
+        // Set timeout to remove anonymous users after 15 minutes
+        setTimeout(() => {
+            if (globalState.users.has(socket.id)) {
+                const user = globalState.users.get(socket.id);
+                if (user.isAnonymous && !user.isOverlay) {
+                    console.log(`Automatically disconnecting anonymous user ${socket.id} after 15 minutes`);
+                    socket.disconnect(true);
+                }
+            }
+            globalState.anonymousUsers.delete(socket.id);
+        }, 900000); // 15 minutes
+    }
 
     // Send current state to newly connected client
     socket.emit('act-update', globalState.currentAct);
@@ -588,7 +606,7 @@ io.on('connection', (socket) => {
     
     // Handle user name changes with uniqueness check (only for non-overlay users)
     socket.on('user-name-change', (newName) => {
-        if (user.isOverlay) return; // Overlay users can't change names
+        if (user.isOverlay) return;
         
         // Check if name is already taken by another user
         const isNameTaken = Array.from(globalState.users.values()).some(
@@ -602,6 +620,10 @@ io.on('connection', (socket) => {
         } else {
             const oldName = user.name;
             user.name = newName;
+            user.isAnonymous = false; // No longer anonymous
+            
+            // Remove from anonymous tracking
+            globalState.anonymousUsers.delete(socket.id);
             
             // Update the user's name in all their notes and comments
             globalState.notes.forEach(note => {
