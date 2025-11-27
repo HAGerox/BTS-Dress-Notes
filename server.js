@@ -8,6 +8,35 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
+// HTML sanitization function to prevent XSS attacks
+function escapeHtml(text) {
+    if (typeof text !== 'string') return text;
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+// Sanitize user input object
+function sanitizeInput(input) {
+    if (typeof input === 'string') {
+        return escapeHtml(input);
+    }
+    if (Array.isArray(input)) {
+        return input.map(item => sanitizeInput(item));
+    }
+    if (input && typeof input === 'object') {
+        const sanitized = {};
+        for (const key in input) {
+            sanitized[key] = sanitizeInput(input[key]);
+        }
+        return sanitized;
+    }
+    return input;
+}
+
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -401,9 +430,9 @@ io.on('connection', (socket) => {
     // Handle tag creation/updates
     socket.on('create-tag', (tagData) => {
         const newTag = {
-            id: tagData.id || generateId(),
-            name: tagData.name,
-            color: tagData.color || getRandomColor()
+            id: escapeHtml(tagData.id) || generateId(),
+            name: escapeHtml(tagData.name),
+            color: escapeHtml(tagData.color) || getRandomColor()
         };
         
         const existingIndex = globalState.tags.findIndex(tag => tag.id === newTag.id);
@@ -485,12 +514,12 @@ io.on('connection', (socket) => {
             id: Date.now() + Math.random().toString(36).substr(2, 9),
             user: user.name,
             userId: user.id,
-            text: data.text,
+            text: escapeHtml(data.text),
             timecode: noteTimecode,
-            lxCue: data.lxCue || globalState.currentLxCue,
+            lxCue: escapeHtml(data.lxCue) || globalState.currentLxCue,
             timestamp: new Date().toISOString(),
             frameRate: data.frameRate || globalState.timecode.frameRate,
-            tags: data.tags || [],
+            tags: Array.isArray(data.tags) ? data.tags.map(tag => escapeHtml(tag)) : [],
             act: globalState.currentAct, // Use current act from OSC
             comments: []
         };
@@ -513,7 +542,7 @@ io.on('connection', (socket) => {
                 id: Date.now() + Math.random().toString(36).substr(2, 9),
                 user: user.name,
                 userId: user.id,
-                text: text,
+                text: escapeHtml(text),
                 timestamp: new Date().toISOString()
             };
             
@@ -534,7 +563,7 @@ io.on('connection', (socket) => {
             id: Date.now() + Math.random().toString(36).substr(2, 9),
             user: user.name,
             userId: user.id,
-            text: data.text,
+            text: escapeHtml(data.text),
             timestamp: new Date().toISOString()
         };
         
@@ -562,7 +591,7 @@ io.on('connection', (socket) => {
         const note = globalState.notes.find(n => n.id === noteId);
         
         if (note) {
-            note.text = newText;
+            note.text = escapeHtml(newText);
             // Update the timestamp to show when it was last edited
             note.lastEdited = new Date().toISOString();
             note.lastEditedBy = user.name;
@@ -581,7 +610,7 @@ io.on('connection', (socket) => {
         if (note && note.comments) {
             const comment = note.comments.find(c => c.id === commentId);
             if (comment) {
-                comment.text = newText;
+                comment.text = escapeHtml(newText);
                 // Update the timestamp to show when it was last edited
                 comment.lastEdited = new Date().toISOString();
                 comment.lastEditedBy = user.name;
@@ -608,18 +637,21 @@ io.on('connection', (socket) => {
     socket.on('user-name-change', (newName) => {
         if (user.isOverlay) return;
         
+        // Sanitize the new name
+        const sanitizedName = escapeHtml(newName);
+        
         // Check if name is already taken by another user
         const isNameTaken = Array.from(globalState.users.values()).some(
-            u => u.id !== user.id && u.name.toLowerCase() === newName.toLowerCase() && !u.isOverlay
+            u => u.id !== user.id && u.name.toLowerCase() === sanitizedName.toLowerCase() && !u.isOverlay
         );
         
         if (isNameTaken) {
             socket.emit('name-change-error', {
-                message: `Name "${newName}" is already taken. Please choose a different name.`
+                message: `Name "${sanitizedName}" is already taken. Please choose a different name.`
             });
         } else {
             const oldName = user.name;
-            user.name = newName;
+            user.name = sanitizedName;
             user.isAnonymous = false; // No longer anonymous
             
             // Remove from anonymous tracking
