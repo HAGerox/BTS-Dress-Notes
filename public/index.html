@@ -1928,7 +1928,7 @@
                     const userItem = document.createElement('li');
                     userItem.className = 'user-item';
                     userItem.innerHTML = `
-                        ${sanitizeName(user.name)}
+                        ${user.name}
                         ${user.isTyping ? '<span class="user-typing"><span class="typing-indicator"></span>writing note</span>' : ''}
                     `;
                     usersList.appendChild(userItem);
@@ -2238,7 +2238,7 @@
                     // Edited indicator
                     const editedIndicator = note.lastEdited ? 
                         `<div class="note-edited" style="font-size: 0.7rem; opacity: 0.7; margin-top: 0.3rem;">
-                            Last edited by ${sanitizeName(note.lastEditedBy) || 'unknown'} at ${new Date(note.lastEdited).toLocaleTimeString()}
+                            Last edited by ${note.lastEditedBy || 'unknown'} at ${new Date(note.lastEdited).toLocaleTimeString()}
                         </div>` : '';
                     
                     // Check if this note's comments should be expanded
@@ -2257,10 +2257,10 @@
                                 ${note.comments ? note.comments.map(comment => `
                                     <div class="comment-item" data-comment-id="${escapeHtml(comment.id)}">
                                         <div class="comment-header">
-                                            <span class="comment-user">${sanitizeName(comment.user)}</span>
+                                            <span class="comment-user">${comment.user}</span>
                                             <span class="comment-time">
                                                 ${formatCommentTime(comment.timestamp)}
-                                                ${comment.lastEdited ? `(edited by ${sanitizeName(comment.lastEditedBy) || 'unknown'} at ${new Date(comment.lastEdited).toLocaleTimeString()})` : ''}
+                                                ${comment.lastEdited ? `(edited by ${comment.lastEditedBy || 'unknown'} at ${new Date(comment.lastEdited).toLocaleTimeString()})` : ''}
                                             </span>
                                         </div>
                                         <div class="comment-text">
@@ -2290,7 +2290,7 @@
                         <div class="note-item" data-tags="${escapeHtml(note.tags.join(','))}" data-act="${escapeHtml(note.act) || 'Preshow'}">
                             <div class="note-header">
                                 <span class="note-act">${escapeHtml(note.act) || 'Preshow'}</span>
-                                <span class="note-user">${sanitizeName(note.user)}</span>
+                                <span class="note-user">${note.user}</span>
                                 <span class="note-timecode">
                                     ${timecodeDisplay} 
                                     <span class="note-lx-cue">LX: ${escapeHtml(note.lxCue) || 'N/A'}</span>
@@ -2579,13 +2579,15 @@
                     const time = new Date(msg.timestamp);
                     const timeString = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                     
+                    // msg.text is already sanitized by the server (allows only img tags)
+                    // msg.user is already sanitized by the server (allows only color spans)
                     return `
                         <div class="chat-message">
                             <div class="chat-message-header">
-                                <span class="chat-message-user">${sanitizeName(msg.user)}</span>
+                                <span class="chat-message-user">${msg.user}</span>
                                 <span class="chat-message-time">${timeString}</span>
                             </div>
-                            <div class="chat-message-text">${sanitizeShitpost(msg.text)}</div>
+                            <div class="chat-message-text">${msg.text}</div>
                         </div>
                     `;
                 }).join('');

@@ -724,7 +724,7 @@
                         return `
                             <div class="comment" style="background: rgba(255,255,255,0.1); padding: 0.5rem; border-radius: 5px; margin-top: 0.3rem; border-left: 2px solid rgba(76, 175, 80, 0.5);">
                                 <div style="display: flex; justify-content: space-between; font-size: 0.8rem; opacity: 0.8; margin-bottom: 0.2rem;">
-                                    <span style="font-weight: bold; color: #4CAF50;">${sanitizeName(comment.user)}</span>
+                                    <span style="font-weight: bold; color: #4CAF50;">${note.user}</span>
                                     <span>${commentTime}</span>
                                 </div>
                                 <div style="font-size: 0.9rem;">${escapeHtml(comment.text)}</div>
@@ -735,7 +735,7 @@
                     return `
                         <div class="note-item" data-tags="${escapeHtml((note.tags || []).join(','))}" data-act="${escapeHtml(note.act) || 'Act 1'}">
                             <div class="note-header">
-                                <span class="note-user">${sanitizeName(note.user)}</span>
+                                <span class="note-user">${note.user}</span>
                                 <span class="note-timecode">
                                     ${timecodeDisplay} 
                                     <span class="note-lx-cue">LX: ${escapeHtml(note.lxCue) || 'N/A'}</span>
