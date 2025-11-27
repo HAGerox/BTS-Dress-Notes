@@ -751,13 +751,13 @@ io.on('connection', (socket) => {
             // Update the user's name in all their notes and comments
             globalState.notes.forEach(note => {
                 if (note.userId === user.id) {
-                    note.user = newName;
+                    note.user = sanitizedName;
                 }
                 // Update user name in comments
                 if (note.comments) {
                     note.comments.forEach(comment => {
                         if (comment.userId === user.id) {
-                            comment.user = newName;
+                            comment.user = sanitizedName;
                         }
                     });
                 }
