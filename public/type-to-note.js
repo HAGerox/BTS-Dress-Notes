@@ -10,6 +10,13 @@
     // (e.g. a tag checkbox that was just clicked) should still go to the note.
     const NON_TEXT_INPUTS = new Set(['checkbox', 'radio', 'button', 'submit', 'reset', 'range', 'file', 'color', 'image']);
 
+    // Layout width does not identify a phone: a narrow desktop window still
+    // uses Enter to submit. Touch keyboards keep Enter available for newlines.
+    function shouldSubmit(e, touchInput = false) {
+        return e.key === 'Enter' && !e.shiftKey && !e.isComposing && e.keyCode !== 229
+            && !e.defaultPrevented && !touchInput;
+    }
+
     function isTextEntry(el) {
         if (!el || el.nodeType !== 1) return false;
         const tag = el.tagName;
@@ -65,5 +72,5 @@
         return ctx.focused ? 'release' : 'cancel';
     }
 
-    return { shouldFocusNote, isTextEntry, escapeAction, leaveAction, emptyBoxAction, EMPTY_RELEASE_MS };
+    return { shouldSubmit, shouldFocusNote, isTextEntry, escapeAction, leaveAction, emptyBoxAction, EMPTY_RELEASE_MS };
 }));

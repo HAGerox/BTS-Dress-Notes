@@ -1523,7 +1523,7 @@ document.addEventListener('DOMContentLoaded', function() {
         saveDraft();
     });
     noteInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && !phoneLayout.matches && !touchInput.matches) {
+        if (typeToNote.shouldSubmit(e, touchInput.matches)) {
             e.preventDefault();
             if (!sendNoteBtn.disabled) sendNoteBtn.click();
         }
@@ -1628,7 +1628,7 @@ document.addEventListener('DOMContentLoaded', function() {
             rememberTags(selectedTags);
             resetComposer();
             // Dismiss the phone keyboard after sending; desktop stays ready to type.
-            if (phoneLayout.matches || touchInput.matches) {
+            if (touchInput.matches) {
                 noteInput.blur();
                 sendNoteBtn.blur();
             } else noteInput.focus();
@@ -1687,7 +1687,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- Event listeners: chat ---
     chatInput.addEventListener('input', () => { sendChatBtn.disabled = chatInput.value.trim().length === 0; });
     chatInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && !phoneLayout.matches && !touchInput.matches) {
+        if (typeToNote.shouldSubmit(e, touchInput.matches)) {
             e.preventDefault();
             sendChatMessage();
         }
@@ -1858,7 +1858,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!field) return;
         const note = noteOf(target);
         if (!note) return;
-        if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+        if (typeToNote.shouldSubmit(e, touchInput.matches)) {
             e.preventDefault();
             if (field === 'comment') submitComment(note);
             else if (field === 'note-edit') saveNoteEdit(note);

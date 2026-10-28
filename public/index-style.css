@@ -556,9 +556,9 @@ button.chip:hover { color: var(--text); border-color: var(--text-3); }
 @media (min-width: 861px) {
     .connection-banner:not([hidden]) ~ .drawer { top: calc(var(--topbar-h) + var(--connection-banner-h, 37px)); }
 }
-/* Wide screens: the page makes room for the chat instead of hiding under it. */
+/* Equal gutters keep notes centred in the window and clear of the docked chat. */
 @media (min-width: 1100px) {
-    .chat-open .page { margin-right: 360px; }
+    .chat-open .page { max-width: min(1080px, calc(100% - 720px)); }
     .chat-open .drawer { box-shadow: none; }
 }
 
