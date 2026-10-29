@@ -137,6 +137,7 @@
     text-decoration: none;
 }
 .menu-item:hover { background: var(--hover); }
+.menu-item.danger { color: var(--danger); }
 .menu-form { margin: 0; }
 .menu-sep { height: 1px; background: var(--border); margin: 4px 0; }
 
