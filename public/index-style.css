@@ -531,12 +531,10 @@ button.chip:hover { color: var(--text); border-color: var(--text-3); }
 .to-top:hover { background: var(--hover); }
 
 /* --- Chat drawer --- */
-/* Tinted so new people spot where chat goes, rather than posting it as a note. */
-.chat-toggle { background: var(--accent-soft); color: var(--text); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
-.chat-toggle:hover { background: color-mix(in srgb, var(--accent) 24%, transparent); }
+/* Accent text marks chat; a solid fill marks it open. */
+.chat-toggle { color: var(--accent); }
+.chat-toggle:hover { background: var(--accent-soft); color: var(--accent); }
 .chat-toggle[aria-expanded="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
-.chat-toggle .icon { color: var(--accent); }
-.chat-toggle[aria-expanded="true"] .icon { color: inherit; }
 
 .drawer {
     position: fixed;
