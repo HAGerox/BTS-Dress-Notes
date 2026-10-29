@@ -873,7 +873,9 @@ document.addEventListener('DOMContentLoaded', function() {
         clearTimeout(rebuildTimer);
         notesList.replaceChildren();
         noteElements.clear();
-        for (const { element } of [...pendingNotes.values()].reverse()) notesList.appendChild(element);
+        for (const { element, visible } of [...pendingNotes.values()].reverse()) {
+            if (visible) notesList.appendChild(element);
+        }
         const order = NoteOrder.newestFirst(allNotes).map(note => note.id);
         let next = 0;
         let lastAct = null;
@@ -913,13 +915,14 @@ document.addEventListener('DOMContentLoaded', function() {
             insertNewestNote(element, note);
             updateActFilter();
             filterNotes();
-            if (note.userId !== currentUser.sub) element.classList.add('flash');
+            element.classList.add('arriving');
         }
     }
 
     // --- Pending notes ---
-    // A note is shown as pending from Send until the server acknowledges it
-    // has stored it. While disconnected it is held here rather than in
+    // A fast acknowledgement draws the note once, in its final scene group.
+    // Pending feedback is delayed so ordinary sends never flash a temporary row.
+    // While disconnected it is held here rather than in
     // socket.io's send buffer, and every pending note is (re)sent on connect:
     // one sent just before a drop may or may not have arrived, and the server
     // ignores a resend with a clientId it already has. They are also saved to
@@ -931,6 +934,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setItem: (key, value) => localStorage.setItem(key, value),
         removeItem: (key) => localStorage.removeItem(key)
     });
+    const PENDING_FEEDBACK_MS = 800;
 
     // The notes this browser had not got stored before it was last closed.
     function restorePendingNotes() {
@@ -959,9 +963,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function updatePendingBadges() {
         const text = pendingBadgeText();
-        for (const { element } of pendingNotes.values()) {
-            element.querySelector('.pending-badge').textContent = text;
+        for (const pending of pendingNotes.values()) {
+            pending.element.querySelector('.pending-badge').textContent = text;
+            if (!window.socket.connected) revealPendingNote(pending);
         }
+    }
+
+    function revealPendingNote(pending) {
+        if (pendingNotes.get(pending.note.clientId) !== pending || pending.visible) return;
+        clearTimeout(pending.feedbackTimer);
+        pending.visible = true;
+        // Pending rows have no confirmed scene yet, so keep them above its groups.
+        const next = [...pendingNotes.values()].reverse().find(other =>
+            other !== pending && other.visible && other.writtenAt <= pending.writtenAt);
+        notesList.insertBefore(pending.element, next ? next.element : notesList.querySelector('.group-head'));
+        filterNotes();
     }
 
     // The ages are recomputed on every send: the browser's clock is not the
@@ -979,6 +995,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!stored || stored.error) {
                 // Refused, so resending cannot help: say so on the note and stop trying.
                 if (pendingNotes.get(note.clientId) !== pending) return;
+                revealPendingNote(pending);
+                clearTimeout(pending.feedbackTimer);
                 pendingNotes.delete(note.clientId);
                 pendingStore.remove(pending.sub, note.clientId);
                 pending.element.querySelector('.pending-badge').textContent =
@@ -999,6 +1017,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function clearPendingNote(clientId) {
         const pending = pendingNotes.get(clientId);
         if (!pending) return;
+        clearTimeout(pending.feedbackTimer);
         pending.element.remove();
         pendingNotes.delete(clientId);
         pendingStore.remove(pending.sub, clientId);
@@ -1008,11 +1027,12 @@ document.addEventListener('DOMContentLoaded', function() {
     function showPendingNote(note, writtenAt) {
         const element = createPendingNoteElement(note);
         // `sub` is whoever wrote it: it is only ever sent under their login.
-        pendingNotes.set(note.clientId, { note, element, writtenAt, sub: currentUser.sub });
+        const pending = { note, element, writtenAt, sub: currentUser.sub, visible: false, feedbackTimer: null };
+        pendingNotes.set(note.clientId, pending);
         notesLoading.finish({ immediate: true });
-        // The newest pending note goes above the older ones.
-        notesList.insertBefore(element, notesList.firstChild);
-        filterNotes();
+        const delay = Math.max(0, PENDING_FEEDBACK_MS - (Date.now() - writtenAt));
+        if (!window.socket.connected || delay === 0) revealPendingNote(pending);
+        else pending.feedbackTimer = setTimeout(() => revealPendingNote(pending), delay);
     }
 
     function newClientId() {
@@ -1228,6 +1248,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 pending.sub = data.sub;
                 pendingStore.add(data.sub, { note: pending.note, writtenAt: pending.writtenAt });
             } else if (pending.sub !== data.sub) {
+                clearTimeout(pending.feedbackTimer);
                 pending.element.remove();
                 pendingNotes.delete(clientId);
             }
@@ -1453,7 +1474,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // and the notes still waiting to be acknowledged, so neither comes back.
     window.socket.on('all-reset', () => {
         chatCopy.onReset();
-        for (const { element } of pendingNotes.values()) element.remove();
+        for (const { element, feedbackTimer } of pendingNotes.values()) {
+            clearTimeout(feedbackTimer);
+            element.remove();
+        }
         pendingNotes.clear();
         pendingStore.clear(currentUser.sub);
         filterNotes();
