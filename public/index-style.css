@@ -280,6 +280,8 @@ button.chip:hover { color: var(--text); border-color: var(--text-3); }
     overflow: hidden;
 }
 .notes-list:empty { display: none; }
+.empty-link { color: var(--accent); text-underline-offset: 3px; }
+.empty-link:hover { color: var(--accent-hover); }
 
 /* Loading is shared by notes, chat and past notes (loading-state.js). Reserve
    space while waiting, and reveal skeletons only for a slower first load. */
