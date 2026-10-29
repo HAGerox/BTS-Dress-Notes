@@ -191,13 +191,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const resetResult = byId('resetResult');
     resetButton.addEventListener('click', () => {
         resetResult.hidden = true;
-        resetConfirm.hidden = false;
-        resetButton.hidden = true;
-        byId('resetCancelButton').focus();
+        resetConfirm.showModal();
     });
     byId('resetCancelButton').addEventListener('click', () => {
-        resetConfirm.hidden = true;
-        resetButton.hidden = false;
+        resetConfirm.close();
     });
     byId('resetConfirmButton').addEventListener('click', () => {
         socket.timeout(10000).emit('reset-all', (err, reply) => {
@@ -205,8 +202,7 @@ document.addEventListener('DOMContentLoaded', function() {
             resetResult.textContent = err || !reply ? "Couldn't reset. Try again." : reply.error;
             resetResult.hidden = false;
         });
-        resetConfirm.hidden = true;
-        resetButton.hidden = false;
+        resetConfirm.close();
     });
     socket.on('all-reset', () => {
         resetResult.textContent = `All notes and chat were reset at ${new Date().toLocaleTimeString()}.`;
@@ -296,8 +292,7 @@ document.addEventListener('DOMContentLoaded', function() {
         saveResult.hidden = false;
     }
     function closeSaveReset() {
-        saveResetConfirm.hidden = true;
-        saveResetButton.hidden = false;
+        saveResetConfirm.close();
     }
     function saveShow(reset) {
         saveButtons.forEach(button => { button.disabled = true; });
@@ -332,9 +327,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         saveResult.hidden = true;
-        saveResetConfirm.hidden = false;
-        saveResetButton.hidden = true;
-        byId('saveResetCancelButton').focus();
+        saveResetConfirm.showModal();
     });
     byId('saveResetCancelButton').addEventListener('click', closeSaveReset);
     byId('saveResetConfirmButton').addEventListener('click', () => saveShow(true));
