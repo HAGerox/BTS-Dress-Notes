@@ -125,10 +125,10 @@
 .users-list .you, .users-list .writing { color: var(--text-3); font-size: 12px; }
 .users-list .writing { color: var(--warn); margin-left: auto; }
 
-.menu-user { padding: 6px 8px 8px; font-size: 12px; color: var(--text-3); border-bottom: 1px solid var(--border); margin-bottom: 4px; }
-.menu-user strong { color: var(--text); font-weight: 500; }
 .menu-item {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 12px;
     width: 100%;
     text-align: left;
     padding: 6px 8px;
@@ -137,7 +137,11 @@
     text-decoration: none;
 }
 .menu-item:hover { background: var(--hover); }
+.menu-item .icon { color: var(--text-2); }
+.menu-label { display: flex; flex-direction: column; gap: 2px; }
+.menu-label small { color: var(--text-3); font-size: 11px; }
 .menu-item.danger { color: var(--danger); }
+.menu-item.danger .icon { color: inherit; }
 .menu-form { margin: 0; }
 .menu-sep { height: 1px; background: var(--border); margin: 4px 0; }
 
@@ -658,7 +662,7 @@ button.chip:hover { color: var(--text); border-color: var(--text-3); }
     .mobile-only { display: inline-flex; }
     /* Hidden visually but still read out, so the icon-only button keeps its name. */
     #chatToggle span:not(.count-badge) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-    .menu-item.mobile-only { display: block; }
+    .menu-item.mobile-only { display: flex; }
     .notes-page .topbar { gap: 8px; }
     .notes-page .topbar-actions { gap: 0; flex: none; }
     .video-link { width: 44px; min-width: 44px; padding: 0; }

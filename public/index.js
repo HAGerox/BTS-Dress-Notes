@@ -32,7 +32,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const clearFiltersBtn = $('clearFilters');
     const searchInput = $('searchInput');
     const exportJsonBtn = $('exportJson');
-    const currentUserName = $('currentUserName');
     const tagsContainer = $('tagsContainer');
     const composerTagsToggle = $('composerTagsToggle');
     const composerTagsLabel = $('composerTagsLabel');
@@ -1076,8 +1075,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!snapshot) return;
         currentUser.sub = snapshot.sub;
         currentUser.name = snapshot.name;
-        currentUserName.textContent = snapshot.name;
-        currentUserName.classList.remove('awaiting-data');
         allNotes = snapshot.notes.map(withLists);
         rebuildFullNotesList();
         notesLoading.finish({ immediate: true });
@@ -1222,8 +1219,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const changed = currentUser.sub !== data.sub;
         currentUser.name = data.name;
         currentUser.sub = data.sub;
-        currentUserName.textContent = data.name;
-        currentUserName.classList.remove('awaiting-data');
         identityConfirmed = true;
         if (changed) applyRememberedTags();
         // Notes written before we knew who we are are ours; another person's

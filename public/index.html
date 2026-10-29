@@ -44,13 +44,13 @@
     </div>
 
     <div id="menuPopover" class="popover menu-popover" hidden>
-        <div class="menu-user">Signed in as <strong id="currentUserName" class="awaiting-data">Guest</strong></div>
-        <button type="button" id="menuUsersButton" class="menu-item mobile-only">Who's online</button>
-        <a href="/recall.html" class="menu-item">Open past notes</a>
-        <button type="button" id="exportJson" class="menu-item">Download notes (JSON)</button>
-        <a href="/config.html" class="menu-item">Settings &amp; status</a>
+        <button type="button" id="menuUsersButton" class="menu-item mobile-only"><svg class="icon" aria-hidden="true"><use href="icons.svg#i-users"/></svg>Who's online</button>
+        <a href="/recall.html" class="menu-item"><svg class="icon" aria-hidden="true"><use href="icons.svg#i-history"/></svg>Past notes</a>
+        <button type="button" id="exportJson" class="menu-item"><svg class="icon" aria-hidden="true"><use href="icons.svg#i-download"/></svg><span class="menu-label">Download notes<small>Save a copy to your device</small></span></button>
         <div class="menu-sep"></div>
-        <form method="post" action="/logout" class="menu-form"><button type="submit" class="menu-item danger">Log out</button></form>
+        <a href="/config.html" class="menu-item"><svg class="icon" aria-hidden="true"><use href="icons.svg#i-settings"/></svg>Settings</a>
+        <div class="menu-sep"></div>
+        <form method="post" action="/logout" class="menu-form"><button type="submit" class="menu-item danger"><svg class="icon" aria-hidden="true"><use href="icons.svg#i-logout"/></svg>Log out</button></form>
     </div>
 
     <main class="page">
