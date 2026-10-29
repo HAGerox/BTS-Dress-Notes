@@ -311,7 +311,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const parts = reply.show.recordingParts;
             const video = parts ? ` and ${parts === 1 ? 'its video' : `${parts} video parts`}` : '';
             showSaveResult(`Saved “${reply.show.name}” (${notes}${video})${reset ? ' and reset everything' : ''}. `, link);
-            loadShows();
+            loadShows().then(() => chooseCollection(reply.show.id));
             showNameInput.value = '';
         });
     }
@@ -339,7 +339,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const uploadRow = byId('uploadRow');
     const recordingResult = byId('recordingResult');
     const { isVideo, probeDuration } = VideoFile;
-    let recordingCollection = 'live';
+    let recordingCollection = new URLSearchParams(location.search).get('recording') || 'live';
     let parts = [];
     let confirmRemove = null;      // the part whose Remove asks to confirm
     let uploading = null;          // { xhr, name, index, count, loaded, total }
@@ -360,7 +360,7 @@ document.addEventListener('DOMContentLoaded', function() {
     async function loadShows() {
         try {
             const shows = await getJson('/shows');
-            fillSelect(recordingNotesSelect, [['live', 'Live notes'], ...shows.map(show => [show.id, show.name])], recordingCollection);
+            fillSelect(recordingNotesSelect, [['live', 'Current notes'], ...shows.map(show => [show.id, `Saved: ${show.name}`])], recordingCollection);
             if (recordingNotesSelect.value !== recordingCollection) chooseCollection('live');
         } catch (_) { /* the select keeps what it has */ }
     }
@@ -368,6 +368,9 @@ document.addEventListener('DOMContentLoaded', function() {
     function chooseCollection(collection) {
         recordingCollection = collection;
         recordingNotesSelect.value = collection;
+        const url = new URL(location.href);
+        url.searchParams.set('recording', collection);
+        history.replaceState(null, '', url);
         parts = [];
         confirmRemove = null;
         renderParts();
@@ -435,6 +438,10 @@ document.addEventListener('DOMContentLoaded', function() {
     function renderParts() {
         recordingRows.querySelectorAll('.part-row').forEach(row => row.remove());
         parts.forEach(part => recordingRows.insertBefore(partRow(part), uploadRow));
+        const watch = byId('watchRecording');
+        watch.hidden = parts.length === 0;
+        watch.href = recordingCollection === 'live' ? '/playback.html?source=live'
+            : `/playback.html?show=${encodeURIComponent(recordingCollection)}`;
         showUploadStatus();
     }
 
@@ -522,7 +529,7 @@ document.addEventListener('DOMContentLoaded', function() {
         byId('cancelUpload').hidden = !uploading;
         byId('uploadButton').hidden = !!uploading;
         if (!uploading) {
-            byId('uploadText').textContent = parts.length ? '' : 'No recording yet';
+            byId('uploadText').textContent = parts.length ? '' : 'No video added';
             return;
         }
         const { name, index, count, loaded, total } = uploading;

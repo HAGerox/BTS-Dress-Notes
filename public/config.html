@@ -16,7 +16,7 @@
     <main class="settings">
         <section class="section" aria-labelledby="saveTitle">
             <h2 id="saveTitle">Save notes</h2>
-            <p class="section-note">Keeps the notes as they are now under a name, to open later in <a href="/recall.html">Past notes</a>. Videos uploaded for the live notes are kept with them.</p>
+            <p class="section-note">Saves notes and video together in <a href="/recall.html">Past notes</a>.</p>
             <form id="saveShowForm" class="rows">
                 <div class="row row-wrap">
                     <label class="row-label" for="showNameInput">Name</label>
@@ -29,20 +29,22 @@
         </section>
 
         <section class="section" id="recordings" aria-labelledby="recordingsTitle">
-            <h2 id="recordingsTitle">Recordings</h2>
+            <h2 id="recordingsTitle">Video</h2>
+            <p class="section-note">Add a video for everyone to watch with these notes.</p>
             <input type="file" id="uploadInput" accept="video/*,.mov,.mp4,.m4v,.webm" multiple hidden>
             <div class="rows" id="recordingRows">
                 <div class="row">
-                    <label class="row-label" for="recordingNotesSelect">Notes</label>
+                    <label class="row-label" for="recordingNotesSelect">Attach to</label>
                     <select id="recordingNotesSelect" class="select">
-                        <option value="live">Live notes</option>
+                        <option value="live">Current notes</option>
                     </select>
                 </div>
                 <div class="row" id="uploadRow">
                     <span id="uploadText" class="row-value"></span>
                     <progress id="uploadProgress" max="1" value="0" hidden></progress>
                     <button type="button" id="cancelUpload" class="btn ghost" hidden>Cancel upload</button>
-                    <button type="button" id="uploadButton" class="btn outline">Upload video</button>
+                    <a id="watchRecording" href="/playback.html?source=live" class="btn ghost" hidden>Watch video</a>
+                    <button type="button" id="uploadButton" class="btn outline">Add video</button>
                 </div>
             </div>
             <p id="recordingResult" class="section-note result" role="alert" hidden></p>
