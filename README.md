@@ -69,6 +69,8 @@ Only the person who sent a note can edit it; backups record who wrote each note 
 
 To clear the show, open `/config.html` and use **Reset all notes and chat** (it asks for confirmation). This empties notes and chat on the server and in every open browser, and a restart afterwards stays empty. Tags are kept.
 
+JSON downloads are named `BTS Dress Notes YYYY-MM-DD.json` (the download date in UTC).
+
 ## Show recordings
 
 **Recordings** on the settings page puts a show's recording on the server, for the live notes or any saved show, so everyone who opens those notes can watch it without their own copy. A recording in several parts can be uploaded together or one at a time: the parts play as one timeline in start-time order, with blank time where the recording stopped. Start times come from Vor's dated file names (`Show.2026-10-07 19-30-00.mp4`) and can be adjusted under **Adjust timing**; parts without one play back to back. On the playback page (**Video** on the notes, or on a saved show in Past notes), **Choose from this device** plays a video only for you, without uploading it.

@@ -236,7 +236,10 @@ test('an exported file keeps authorship by Keycloak identity when imported again
     await until(() => alice.notes.length === 1, 'the note to arrive');
     const exported = new Promise((resolve) => alice.once('export-data', resolve));
     alice.emit('export-request', 'json');
-    const file = JSON.parse((await exported).data);
+    const download = await exported;
+    assert.match(download.filename, /^BTS Dress Notes \d{4}-\d{2}-\d{2}\.json$/);
+    assert.strictEqual(download.mimeType, 'application/json');
+    const file = JSON.parse(download.data);
     assert.deepStrictEqual(file.authors.map((a) => a.userId), [alice.notes[0].userId]);
 
     await importFile(bob, file);

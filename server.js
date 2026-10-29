@@ -1786,13 +1786,13 @@ io.on('connection', (socket) => {
     on('export-request', (format) => {
         if (user.isOverlay) return; // Overlay users can't export
 
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const date = new Date().toISOString().slice(0, 10);
         let data, mimeType, filename;
 
         if (format === 'json') {
             data = JSON.stringify(notesExport(), null, 2);
             mimeType = 'application/json';
-            filename = `timecoded-notes-${timestamp}.json`;
+            filename = `BTS Dress Notes ${date}.json`;
         }
         socket.emit('export-data', { data, mimeType, filename });
     });
