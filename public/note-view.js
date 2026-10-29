@@ -183,9 +183,43 @@
     }
 
     // --- Popovers ---
+    function mobilePopoverViewport() {
+        if (!window.matchMedia('(max-width: 860px), (pointer: coarse)').matches) return null;
+        const viewport = window.visualViewport;
+        return { left: viewport?.offsetLeft || 0, top: viewport?.offsetTop || 0,
+            width: viewport?.width ?? window.innerWidth, height: viewport?.height ?? window.innerHeight };
+    }
+
+    function fitPopoverInViewport(popover) {
+        const viewport = mobilePopoverViewport();
+        if (!viewport || popover.hidden) return;
+        popover.style.setProperty('--popover-viewport-height', `${viewport.height}px`);
+        const r = popover.getBoundingClientRect();
+        popover.style.left = `${Math.max(viewport.left + 8, Math.min(r.left, viewport.left + viewport.width - r.width - 8))}px`;
+        popover.style.top = `${Math.max(viewport.top + 8, Math.min(r.top, viewport.top + viewport.height - r.height - 8))}px`;
+    }
+
+    // Keyboard height changes reposition menus; width changes dismiss them.
+    function watchPopoverResize(close, reposition) {
+        let previousWidth = window.innerWidth;
+        window.addEventListener('resize', () => {
+            const heightOnly = window.innerWidth === previousWidth;
+            previousWidth = window.innerWidth;
+            if (heightOnly && mobilePopoverViewport()) reposition();
+            else close();
+        });
+        for (const event of ['resize', 'scroll']) {
+            window.visualViewport?.addEventListener(event, () => {
+                if (mobilePopoverViewport()) reposition();
+            });
+        }
+    }
+
     // Shows `popover` under `anchor` (or above, if there's no room), kept on screen.
     function placePopover(popover, anchor, align) {
         popover.hidden = false;
+        const viewport = mobilePopoverViewport();
+        if (viewport) popover.style.setProperty('--popover-viewport-height', `${viewport.height}px`);
         const r = anchor.getBoundingClientRect();
         const w = popover.offsetWidth;
         const h = popover.offsetHeight;
@@ -195,15 +229,21 @@
         if (top + h > window.innerHeight - 8) top = Math.max(8, r.top - h - 4);
         popover.style.left = `${left}px`;
         popover.style.top = `${top}px`;
+        fitPopoverInViewport(popover);
     }
 
     // A filter is a button opening a list of choices rather than a <select>,
     // which can't show each tag's colour. `button` is a .select, `popover` a
     // .popover.filter-popover[role=listbox]. Closes on a choice, Escape, a
-    // click elsewhere or a resize; `beforeOpen` closes the page's other popovers.
+    // click elsewhere or a width change (any resize on desktop);
+    // `beforeOpen` closes the page's other popovers.
     function createDropdown({ button, popover, onChange, beforeOpen }) {
         function isOpen() {
             return !popover.hidden;
+        }
+
+        function reposition() {
+            if (isOpen()) placePopover(popover, button, 'left');
         }
 
         function close() {
@@ -262,9 +302,9 @@
         document.addEventListener('click', (e) => {
             if (!popover.contains(e.target)) close();
         });
-        window.addEventListener('resize', close);
+        watchPopoverResize(close, reposition);
 
-        return { render, open, close, isOpen };
+        return { render, open, close, isOpen, reposition };
     }
 
     return {
@@ -274,6 +314,6 @@
         unknownTag, tagChipHTML, tagChipsHTML, dotHTML,
         noteHeadHTML, noteHTML, commentHTML, groupHeadHTML,
         noteMatches, filtersActive, sceneOptions, tagOptions,
-        placePopover, createDropdown
+        placePopover, fitPopoverInViewport, watchPopoverResize, createDropdown
     };
 }));

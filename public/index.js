@@ -1530,7 +1530,9 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.popover') && !e.target.closest('[data-action="edit-tags"]')) closePopovers();
     });
-    window.addEventListener('resize', closePopovers);
+    NoteView.watchPopoverResize(closePopovers, () => {
+        document.querySelectorAll('.popover:not([hidden])').forEach(NoteView.fitPopoverInViewport);
+    });
 
     // --- Event listeners: note box ---
     noteInput.addEventListener('focus', () => {
@@ -1904,8 +1906,13 @@ document.addEventListener('DOMContentLoaded', function() {
         clearTimeout(scrollTimeout);
         scrollTimeout = setTimeout(toggleScrollButton, 50);
         if (!tagPicker.hidden && !tagPicker.contains(document.activeElement)) closeTagPicker();
-        actDropdown.close();
-        tagDropdown.close();
+        if (modalChatLayout.matches || touchInput.matches) {
+            actDropdown.reposition();
+            tagDropdown.reposition();
+        } else {
+            actDropdown.close();
+            tagDropdown.close();
+        }
     }, { passive: true });
 
     // --- Initialization ---

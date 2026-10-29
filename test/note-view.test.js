@@ -3,6 +3,81 @@ const assert = require('node:assert');
 const TimecodeFormat = require('../public/timecode-format.js');
 const NoteView = require('../public/note-view.js');
 
+function mockPopoverWindow(t, mobile = true) {
+    const original = global.window;
+    t.after(() => { if (original === undefined) delete global.window; else global.window = original; });
+    const events = {};
+    const viewportEvents = {};
+    global.window = {
+        innerWidth: mobile ? 390 : 1200, innerHeight: 844,
+        matchMedia: () => ({ matches: mobile }),
+        addEventListener: (event, callback) => { events[event] = callback; },
+        visualViewport: { width: 390, height: 300, offsetTop: 50, offsetLeft: 0,
+            addEventListener: (event, callback) => { viewportEvents[event] = callback; } }
+    };
+    return { events, viewportEvents };
+}
+
+test('mobile keyboard height changes reposition menus; rotation and desktop resize still close them', (t) => {
+    const { events, viewportEvents } = mockPopoverWindow(t);
+    let closes = 0;
+    let repositions = 0;
+    NoteView.watchPopoverResize(() => closes++, () => repositions++);
+    window.innerHeight = 400;
+    events.resize();
+    viewportEvents.resize();
+    viewportEvents.scroll();
+    assert.equal(closes, 0);
+    assert.equal(repositions, 3);
+    window.innerWidth = 844;
+    events.resize();
+    assert.equal(closes, 1);
+    window.matchMedia = () => ({ matches: false });
+    window.innerHeight = 500;
+    events.resize();
+    assert.equal(closes, 2, 'desktop still closes on height-only resize');
+});
+
+test('mobile popovers stay inside the visible viewport above the keyboard', (t) => {
+    mockPopoverWindow(t);
+    const properties = {};
+    const popover = { hidden: false, style: { setProperty: (key, value) => { properties[key] = value; } },
+        getBoundingClientRect: () => ({ left: 300, top: 350, width: 200, height: 100 }) };
+    NoteView.fitPopoverInViewport(popover);
+    assert.equal(properties['--popover-viewport-height'], '300px');
+    assert.equal(popover.style.left, '182px');
+    assert.equal(popover.style.top, '242px');
+    window.matchMedia = () => ({ matches: false });
+    popover.style.top = '350px';
+    NoteView.fitPopoverInViewport(popover);
+    assert.equal(popover.style.top, '350px', 'desktop placement stays unchanged');
+});
+
+test('repositioning an open filter after a layout scroll preserves focus and its open state', (t) => {
+    mockPopoverWindow(t);
+    const originalDocument = global.document;
+    t.after(() => { if (originalDocument === undefined) delete global.document; else global.document = originalDocument; });
+    global.document = { addEventListener() {}, activeElement: null };
+    const attributes = {};
+    let anchorTop = 100;
+    const option = { focus: () => { document.activeElement = option; } };
+    const button = { setAttribute: (key, value) => { attributes[key] = value; }, addEventListener() {},
+        getBoundingClientRect: () => ({ left: 12, right: 112, top: anchorTop, bottom: anchorTop + 44 }) };
+    const popover = { hidden: true, offsetWidth: 200, offsetHeight: 100,
+        addEventListener() {}, querySelector: () => option, contains: element => element === option,
+        style: { setProperty() {} }, getBoundingClientRect() { return {
+            left: parseFloat(this.style.left), top: parseFloat(this.style.top), width: 200, height: 100
+        }; } };
+    const dropdown = NoteView.createDropdown({ button, popover, onChange() {} });
+    dropdown.open();
+    anchorTop = 70;
+    dropdown.reposition();
+    assert.equal(dropdown.isOpen(), true);
+    assert.equal(attributes['aria-expanded'], 'true');
+    assert.equal(document.activeElement, option);
+    assert.equal(popover.style.top, '118px', 'the menu follows its anchor rather than closing');
+});
+
 test('timecode is HH:MM:SS:FF and the time of day HH:MM:SS.cc, everywhere', () => {
     assert.strictEqual(TimecodeFormat.formatTimecode({ hours: 1, minutes: 2, seconds: 3, frames: 4 }), '01:02:03:04');
     assert.strictEqual(TimecodeFormat.formatTimecode({ hours: 21, minutes: 5, seconds: 9, milliseconds: 456, displayMode: 'realtime' }), '21:05:09.45');

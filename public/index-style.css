@@ -643,6 +643,7 @@ button.chip:hover { color: var(--text); border-color: var(--text-3); }
     .to-top { min-height: 44px; border-radius: 22px; }
     .avatars { min-height: 44px; height: auto; }
     #chatToggle { min-width: 44px; }
+    .popover { max-height: min(420px, calc(var(--popover-viewport-height, var(--visible-height, 100dvh)) - 16px)); overflow-y: auto; overscroll-behavior: contain; }
 }
 
 @media (max-width: 640px) {
@@ -699,7 +700,7 @@ button.chip:hover { color: var(--text); border-color: var(--text-3); }
     .comment-input > .avatar { display: none; }
     .edit-actions { flex-wrap: wrap; }
 
-    .popover { min-width: min(220px, calc(100vw - 16px)); max-width: calc(100vw - 16px); max-height: min(420px, calc(100dvh - 16px)); overflow-y: auto; overscroll-behavior: contain; }
+    .popover { min-width: min(220px, calc(100vw - 16px)); max-width: calc(100vw - 16px); }
     .tag-picker-list, .users-list { max-height: 50dvh; }
     .tag-option { overflow-wrap: anywhere; }
     .tag-option .check { flex: none; }
