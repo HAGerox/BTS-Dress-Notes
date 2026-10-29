@@ -57,18 +57,15 @@
         <section id="composer" class="composer" aria-label="Write a note">
             <textarea id="noteInput" rows="1" placeholder="Write a note…" aria-label="Write a note"></textarea>
             <div class="composer-details">
-                <button type="button" id="composerTagsToggle" class="btn outline mobile-only" aria-expanded="false" aria-controls="tagsContainer">
-                    <svg class="icon" aria-hidden="true"><use href="icons.svg#i-tag"/></svg><span id="composerTagsLabel">Choose tags</span>
-                </button>
                 <div class="tag-toggles" id="tagsContainer" role="group" aria-label="Tags for this note" aria-describedby="tagError"></div>
                 <p id="tagError" class="field-error" role="alert" hidden>Choose at least one tag.</p>
                 <div class="composer-footer">
                     <div id="personalTimecode" class="stamp">
                         <span id="stampLabel" class="stamp-label">Will be stamped</span>
-                        <span class="stamp-value">Cue <span id="personalLxCueDisplay">--</span> · <span id="personalTimecodeDisplay" class="mono">--:--:--:--</span></span>
+                        <span class="stamp-value"><span class="stamp-scene"><span id="personalActDisplay">--</span> · </span>Cue <span id="personalLxCueDisplay">--</span><span class="stamp-time"> · <span id="personalTimecodeDisplay" class="mono">--:--:--:--</span></span></span>
                     </div>
                     <div class="composer-actions">
-                        <button type="button" id="cancelNote" class="btn ghost" aria-label="Discard note"><svg class="icon mobile-only" aria-hidden="true"><use href="icons.svg#i-close"/></svg><span>Discard</span></button>
+                        <button type="button" id="cancelNote" class="btn ghost" aria-label="Discard note">Discard</button>
                         <button type="button" id="sendNote" class="btn primary" disabled>Send note</button>
                     </div>
                 </div>

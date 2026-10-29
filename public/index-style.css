@@ -228,6 +228,7 @@ button.chip:hover { color: var(--text); border-color: var(--text-3); }
     color: var(--text-3);
 }
 .stamp-value { color: var(--text-2); }
+.stamp-time { display: none; }
 .stamp:not(.frozen) .stamp-value { display: none; }
 
 .tag-toggles.invalid .chip { border-color: color-mix(in srgb, var(--danger) 60%, var(--border-strong)); }
@@ -682,20 +683,12 @@ button.chip:hover { color: var(--text); border-color: var(--text-3); }
 
     #noteInput { min-height: 56px; max-height: 35dvh; padding: 14px; }
     .composer-details { padding: 0 12px 12px; }
-    .composer.open .composer-details { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-    #composerTagsToggle { min-width: 0; max-width: calc(100% - 170px); order: 3; }
-    #composerTagsLabel { overflow: hidden; text-overflow: ellipsis; }
-    .tag-toggles { display: none; flex-basis: 100%; order: 1; gap: 8px; padding: 4px 0; }
-    .tags-expanded .tag-toggles { display: flex; }
-    #tagError { flex-basis: 100%; order: 2; }
-    .composer-footer { display: contents; }
-    .stamp { font-size: 12px; flex-basis: 100%; order: 0; }
+    .tag-toggles { gap: 6px; padding-bottom: 10px; }
+    .tag-toggles .chip { min-height: 32px; padding: 4px 9px; border-radius: 16px; font-size: 12px; }
+    .tag-toggles .dot { width: 6px; height: 6px; }
+    .composer-footer { flex-direction: column; align-items: stretch; gap: 6px; padding-top: 8px; }
+    .stamp { flex-wrap: wrap; gap: 0 4px; font-size: 11px; line-height: 16px; overflow-wrap: anywhere; }
     .stamp:not(.frozen) { display: none; }
-    .stamp-label { display: none; }
-    .composer-actions { order: 4; }
-    #cancelNote { width: 44px; padding: 0; }
-    #cancelNote > span { display: none; }
-    .composer-actions .primary { min-width: 112px; }
 
     .notes { margin-top: 20px; }
     .notes-page .notes:not(.has-notes) .toolbar,

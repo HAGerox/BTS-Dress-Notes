@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const globalLxCueElement = $('globalLxCue');
     const personalTimecodeElement = $('personalTimecodeDisplay');
     const personalLxCueElement = $('personalLxCueDisplay');
+    const personalActElement = $('personalActDisplay');
     const personalTimecodeContainer = $('personalTimecode');
     const stampLabel = $('stampLabel');
     const sourceBadge = $('sourceBadge');
@@ -33,8 +34,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchInput = $('searchInput');
     const exportJsonBtn = $('exportJson');
     const tagsContainer = $('tagsContainer');
-    const composerTagsToggle = $('composerTagsToggle');
-    const composerTagsLabel = $('composerTagsLabel');
     const menuUsersButton = $('menuUsersButton');
     const tagFilter = $('tagFilter');
     const tagError = $('tagError');
@@ -67,6 +66,7 @@ document.addEventListener('DOMContentLoaded', function() {
         isTyping: false,
         frozenTimecode: null,
         frozenLxCue: null,
+        frozenAct: null,
         typingStartedAt: null, // this browser's clock; sent as an age (see sendPendingNote)
         currentFrameRate: 30
     };
@@ -172,19 +172,6 @@ document.addEventListener('DOMContentLoaded', function() {
         setHtml(tagsContainer, availableTags.map(tag =>
             NoteView.tagChipHTML(tag, `type="button" data-tag="${esc(tag.id)}" aria-pressed="${selectedTags.includes(tag.id)}"`)
         ).join(''));
-        updateComposerTagsLabel();
-    }
-
-    function updateComposerTagsLabel() {
-        const names = selectedTags.map(id => tagById(id).name);
-        composerTagsLabel.textContent = names.length === 1 ? names[0] : names.length ? `${names.length} tags` : 'Choose tags';
-        composerTagsToggle.title = names.join(', ') || 'Choose tags for this note';
-        composerTagsToggle.hidden = availableTags.length === 0;
-    }
-
-    function setComposerTagsExpanded(open) {
-        composer.classList.toggle('tags-expanded', open);
-        composerTagsToggle.setAttribute('aria-expanded', String(open));
     }
 
     function updateFilterTags() {
@@ -344,7 +331,8 @@ document.addEventListener('DOMContentLoaded', function() {
         composer.classList.toggle('open', open);
         composer.classList.toggle('focused', composer.contains(document.activeElement) || !!composerHold);
         personalTimecodeContainer.classList.toggle('frozen', currentUser.isTyping);
-        stampLabel.textContent = currentUser.isTyping ? 'Note taken at' : 'Taken when you start typing';
+        stampLabel.textContent = currentUser.isTyping ? 'Note taken during' : 'Taken when you start typing';
+        personalActElement.textContent = currentUser.frozenAct || currentAct;
         personalTimecodeContainer.title = 'Locked when you start writing, so it matches the moment you saw';
         noteInput.style.height = 'auto';
         noteInput.style.height = `${noteInput.scrollHeight}px`;
@@ -359,6 +347,7 @@ document.addEventListener('DOMContentLoaded', function() {
             currentUser.frozenTimecode = { ...currentGlobalTimecode, displayMode: timeMode };
         }
         currentUser.frozenLxCue = currentGlobalLxCue;
+        currentUser.frozenAct = currentAct;
         currentUser.typingStartedAt = Date.now();
         updatePersonalTimecodeDisplay(currentUser.frozenTimecode);
         updatePersonalLxCueDisplay(currentUser.frozenLxCue);
@@ -375,6 +364,7 @@ document.addEventListener('DOMContentLoaded', function() {
         currentUser.isTyping = false;
         currentUser.frozenTimecode = null;
         currentUser.frozenLxCue = null;
+        currentUser.frozenAct = null;
         currentUser.typingStartedAt = null;
         if (timeMode !== 'realtime') updatePersonalTimecodeDisplay(currentGlobalTimecode);
         updatePersonalLxCueDisplay(currentGlobalLxCue);
@@ -411,7 +401,6 @@ document.addEventListener('DOMContentLoaded', function() {
         noteInput.value = '';
         sendNoteBtn.disabled = true;
         selectedTags = rememberedTags();
-        setComposerTagsExpanded(false);
         updateTagsDisplay();
         showTagError(false);
         releaseFreeze();
@@ -426,7 +415,6 @@ document.addEventListener('DOMContentLoaded', function() {
     function showTagError(show) {
         tagError.hidden = !show;
         tagsContainer.classList.toggle('invalid', show);
-        if (show) setComposerTagsExpanded(true);
     }
 
     function cancelNote() {
@@ -441,7 +429,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (phoneLayout.matches) { noteInput.blur(); cancelNoteBtn.blur(); updateComposer(); }
             return;
         }
-        const saved = { text, tags: [...selectedTags], timecode: currentUser.frozenTimecode, lxCue: currentUser.frozenLxCue };
+        const saved = { text, tags: [...selectedTags], timecode: currentUser.frozenTimecode, lxCue: currentUser.frozenLxCue, act: currentUser.frozenAct };
         cancelNote();
         noteInput.blur();
         showToast('Note discarded', 'Undo', () => {
@@ -451,6 +439,7 @@ document.addEventListener('DOMContentLoaded', function() {
             noteInput.focus();
             currentUser.frozenTimecode = saved.timecode;
             currentUser.frozenLxCue = saved.lxCue;
+            currentUser.frozenAct = saved.act;
             updatePersonalTimecodeDisplay(saved.timecode);
             updatePersonalLxCueDisplay(saved.lxCue);
             sendNoteBtn.disabled = false;
@@ -1061,6 +1050,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 tags: selectedTags,
                 timecode: currentUser.frozenTimecode,
                 lxCue: currentUser.frozenLxCue,
+                act: currentUser.frozenAct,
                 typingStartedAt: currentUser.typingStartedAt
             }));
         } catch (e) { /* storage unavailable */ }
@@ -1129,6 +1119,7 @@ document.addEventListener('DOMContentLoaded', function() {
         currentUser.isTyping = true;
         currentUser.frozenTimecode = draft.timecode;
         currentUser.frozenLxCue = draft.lxCue;
+        currentUser.frozenAct = typeof draft.act === 'string' ? draft.act : null;
         currentUser.typingStartedAt = typeof draft.typingStartedAt === 'number' ? draft.typingStartedAt : null;
         updatePersonalTimecodeDisplay(draft.timecode);
         updatePersonalLxCueDisplay(draft.lxCue);
@@ -1270,6 +1261,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.socket.on('act-update', (act) => {
         currentAct = act;
         currentActDisplay.textContent = act;
+        if (!currentUser.frozenAct) personalActElement.textContent = act;
         receivedLive('act');
     });
 
@@ -1621,11 +1613,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const id = chip.dataset.tag;
         selectedTags = selectedTags.includes(id) ? selectedTags.filter(t => t !== id) : [...selectedTags, id];
         chip.setAttribute('aria-pressed', String(selectedTags.includes(id)));
-        updateComposerTagsLabel();
         if (!needsTag()) showTagError(false);
         saveDraft();
     });
-    composerTagsToggle.addEventListener('click', () => setComposerTagsExpanded(!composer.classList.contains('tags-expanded')));
 
     sendNoteBtn.addEventListener('click', () => {
         const text = noteInput.value.trim();
