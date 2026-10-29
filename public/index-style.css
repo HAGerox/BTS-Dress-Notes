@@ -28,6 +28,8 @@
 
 .connection-banner:not([hidden]) + .topbar { top: var(--connection-banner-h, 37px); }
 
+.header-context { display: flex; align-items: center; gap: 24px; flex: 1; min-width: 0; overflow: hidden; }
+.header-context .brand { flex: none; }
 .live {
     display: flex;
     align-items: center;
@@ -35,26 +37,9 @@
     min-width: 0;
     overflow: hidden;
 }
-.live-item { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.live-item { display: inline-flex; flex: none; align-items: baseline; gap: 6px; white-space: nowrap; }
 .live-label { color: var(--text-3); font-size: 12px; }
 .live-value { font-weight: 500; }
-
-.signal {
-    align-self: center;
-    font-size: 11px;
-    color: var(--text-3);
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-}
-.signal::before {
-    content: "";
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--text-3);
-}
-.signal.live::before { background: var(--ok); }
 
 .topbar-actions { margin-left: auto; display: flex; align-items: center; gap: 4px; }
 
@@ -622,8 +607,8 @@ button.chip:hover { color: var(--text); border-color: var(--text-3); }
 
 /* --- Small screens --- */
 @media (max-width: 860px) {
-    .notes-page .brand { display: none; }
     .live { gap: 12px; }
+    .header-context { gap: 12px; }
     .avatars-count { display: none; }
     .page { padding: 12px 12px 80px; }
     /* A draft must scroll away, even in a phone's short landscape viewport. */
@@ -669,15 +654,9 @@ button.chip:hover { color: var(--text); border-color: var(--text-3); }
     .notes-page .topbar-actions { gap: 0; flex: none; }
     .video-link { width: 44px; min-width: 44px; padding: 0; }
     .video-link > span { display: none; }
-    .notes-page:has(.composer.focused) .topbar .live { display: none; }
-    .notes-page:has(.composer.focused) .topbar .brand { display: block; }
+    .notes-page .header-context .brand { white-space: nowrap; }
     .notes-page .live { flex: 1; gap: 12px; font-size: 15px; }
-    .live-item { min-width: 0; }
-    .live-item:first-child { flex: none; }
-    .live-item:nth-child(2), #usersButton, .avatar-stack { display: none; }
-    .live-item:last-child .live-label { display: none; }
-    .live-value { overflow: hidden; text-overflow: ellipsis; }
-    .signal { display: none; }
+    #usersButton, .avatar-stack { display: none; }
     .cue-input { width: 62px; height: 44px; }
     .page { padding: 12px max(12px, env(safe-area-inset-right)) max(80px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
 

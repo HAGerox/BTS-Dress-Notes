@@ -13,16 +13,16 @@
     <div id="connectionBanner" class="connection-banner" role="status" aria-live="polite" hidden>Connection lost. Reconnecting&hellip; Notes you send are kept and go out when it's back.</div>
 
     <header class="topbar">
-        <div class="brand">Dress Notes</div>
+        <div class="header-context">
+            <div class="brand">Dress Notes</div>
 
-        <div class="live awaiting-data" title="What a note is stamped with if you start writing now">
-            <span class="live-item"><span class="live-label">Cue</span> <span id="globalLxCue" class="live-value">1</span><input type="text" id="lxCueInput" class="cue-input" aria-label="Current cue" title="No cue feed from the desk, so type the current cue here. It updates for everyone." hidden></span>
-            <span class="live-item"><span class="live-label">Scene</span> <span id="currentActDisplay" class="live-value">Preshow</span></span>
-            <span class="live-item">
-                <span id="timeModeLabel" class="live-label">Clock</span>
-                <span id="globalTimecode" class="live-value mono">00:00:00:00</span>
-                <span id="sourceBadge" class="signal" hidden></span>
-            </span>
+            <div class="live awaiting-data" title="What a note is stamped with if you start writing now">
+                <span class="live-item"><span class="live-label">Scene</span> <span id="currentActDisplay" class="live-value">Preshow</span></span>
+                <span class="live-item"><span class="live-label">Cue</span> <span id="globalLxCue" class="live-value">1</span><input type="text" id="lxCueInput" class="cue-input" aria-label="Current cue" title="No cue feed from the desk, so type the current cue here. It updates for everyone." hidden></span>
+                <span class="live-item">
+                    <span id="globalTimecode" class="live-value mono">00:00:00:00</span>
+                </span>
+            </div>
         </div>
 
         <div class="topbar-actions">

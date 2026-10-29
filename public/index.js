@@ -9,8 +9,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const personalActElement = $('personalActDisplay');
     const personalTimecodeContainer = $('personalTimecode');
     const stampLabel = $('stampLabel');
-    const sourceBadge = $('sourceBadge');
-    const timeModeLabel = $('timeModeLabel');
     const composer = $('composer');
     const noteInput = $('noteInput');
     const lxCueInput = $('lxCueInput');
@@ -227,6 +225,35 @@ document.addEventListener('DOMContentLoaded', function() {
     const notesLoading = createLoadingState(notesSection);
     const chatLoading = createLoadingState(chatDrawer);
     const liveHeader = document.querySelector('.topbar .live');
+    const headerContext = document.querySelector('.header-context');
+    const headerItems = [...liveHeader.children]; // Scene, cue, then time.
+    let headerFitFrame = null;
+    function scheduleHeaderFit() {
+        if (headerFitFrame !== null) return;
+        headerFitFrame = requestAnimationFrame(() => {
+            headerFitFrame = null;
+            liveHeader.hidden = false;
+            headerItems.forEach(item => { item.hidden = false; });
+            const contextGap = parseFloat(getComputedStyle(headerContext).columnGap) || 0;
+            const itemGap = parseFloat(getComputedStyle(liveHeader).columnGap) || 0;
+            let remaining = headerContext.clientWidth - headerContext.querySelector('.brand').getBoundingClientRect().width - contextGap;
+            let fits = true;
+            headerItems.forEach((item, index) => {
+                const width = item.getBoundingClientRect().width + (index ? itemGap : 0);
+                fits = fits && width <= remaining;
+                item.hidden = !fits;
+                if (fits) remaining -= width;
+            });
+            liveHeader.hidden = headerItems[0].hidden;
+        });
+    }
+    const headerResize = new ResizeObserver(scheduleHeaderFit);
+    [headerContext, ...headerItems].forEach(element => headerResize.observe(element));
+    const headerChanges = new MutationObserver(scheduleHeaderFit);
+    [currentActDisplay, globalLxCueElement].forEach(element => {
+        headerChanges.observe(element, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['hidden'] });
+    });
+    scheduleHeaderFit();
     const liveReceived = new Set();
     function receivedLive(part) {
         liveReceived.add(part);
@@ -275,26 +302,13 @@ document.addEventListener('DOMContentLoaded', function() {
         personalLxCueElement.textContent = cue || '--';
     }
 
-    const timeModeLabels = { midi: 'MIDI TC', network: 'Network TC', realtime: 'Time' };
-
-    function updateSourceBadge() {
-        const live = liveSources[timeMode];
-        sourceBadge.textContent = live ? 'Live' : 'Waiting';
-        sourceBadge.title = live ? 'Timecode is coming in' : 'No timecode received yet';
-        sourceBadge.classList.toggle('live', !!live);
-    }
-
     function updateTimeModeDisplay() {
-        timeModeLabel.textContent = timeModeLabels[timeMode] || timeModeLabels.midi;
         if (timeMode === 'realtime') {
-            sourceBadge.hidden = true;
             globalTimecodeElement.title = 'Time of day';
             startRealTimeMode();
         } else {
             currentGlobalTimecode = latestTimecodes[timeMode];
             currentUser.currentFrameRate = currentGlobalTimecode.frameRate;
-            updateSourceBadge();
-            sourceBadge.hidden = false;
             globalTimecodeElement.title = `${currentGlobalTimecode.frameRate} fps`;
             stopRealTimeMode();
             updateGlobalTimecodeDisplay(currentGlobalTimecode);
@@ -1304,7 +1318,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.socket.on('network-timecode-status', (status) => {
         liveSources.network = !!status.running;
-        if (timeMode === 'network') updateSourceBadge();
     });
 
     window.socket.on('timecode-update', (data) => {
@@ -1318,7 +1331,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!currentUser.isTyping) updatePersonalTimecodeDisplay(data);
             if (data.source === 'midi' && !liveSources.midi) {
                 liveSources.midi = true;
-                updateSourceBadge();
             }
         }
     });
