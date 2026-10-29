@@ -52,21 +52,22 @@
         <div id="recordingPanel" class="recording-panel" hidden></div>
 
         <div id="dropZone" class="empty drop-zone">
-            <p class="empty-title">Watch back a show with its notes</p>
-            <p class="muted">Drop the Vor video and the downloaded notes here, or choose them.</p>
+            <p class="empty-title">Watch a show with its notes</p>
+            <p class="muted">Choose current or past notes to watch their video.</p>
             <div class="drop-actions"><a href="/playback.html?source=live" class="btn outline">Use live notes</a><a href="/recall.html" class="btn outline">Open past notes</a></div>
             <a href="playback.html?demo=1" class="btn outline demo-link">Try a sample show</a>
             <p class="drop-status">
                 <span id="notesStatus" class="chip">Notes</span>
-                <span id="videoStatus" class="chip">Video</span>
             </p>
         </div>
 
         <section id="player" class="player" hidden>
             <div class="stage">
                 <div id="recordingPrompt" class="recording-prompt" hidden>
-                    <p class="empty-title">No recording yet</p>
-                    <button type="button" id="chooseRecording" class="btn primary">Choose from this device</button>
+                    <p class="empty-title">No video added</p>
+                    <p class="muted" id="recordingPromptText">Add a video in Settings for everyone to watch.</p>
+                    <a id="addRecordingLink" href="/config.html?recording=live#recordings" class="btn outline">Add video in Settings</a>
+                    <button type="button" id="chooseRecording" class="btn outline" hidden>Choose video from this device</button>
                 </div>
                 <div id="screen" class="screen" hidden>
                     <video id="video" playsinline preload="metadata" tabindex="0" role="button" aria-label="Play video"></video>

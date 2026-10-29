@@ -1,7 +1,7 @@
 // Plays a Vor recording with the notes written during it. Notes come from the
-// live session, a saved show or a local file. The recording is either
-// uploaded for those notes on the settings page (shared with everyone who
-// opens them, recordings.js on the server) or chosen from this device, and may come in several parts:
+// live session, a saved show or a local file. Live and saved shows use shared
+// uploads from Settings; locally opened notes can use device-only videos.
+// A recording may come in several parts:
 // public/playback-program.js lays them out on one timeline with blank gaps
 // where the recording stopped. Timing: public/playback-timeline.js.
 document.addEventListener('DOMContentLoaded', function() {
@@ -29,10 +29,10 @@ document.addEventListener('DOMContentLoaded', function() {
     let data = null;               // the notes file: { notes, tags, showLog }
     let tagsById = new Map();
     // The recording being watched. kind: 'shared' (uploaded for these notes),
-    // 'local' (chosen on this device) or null. parts: { id, name, startAt (ms
+    // 'local' (device-only), 'sample' (the built-in demo) or null. parts: { id, name, startAt (ms
     // or null), duration (s), url, ... }.
     let recording = { kind: null, collection: null, parts: [] };
-    let sharedParts = [];          // the uploaded parts, even while watching a local video
+    let localVideoRequest = 0;
     let program = P.layout([]);    // the parts on one timeline
     let videoStart = null;         // clock time of the timeline's start
     let duration = 0;              // the timeline's length, seconds
@@ -72,48 +72,77 @@ document.addEventListener('DOMContentLoaded', function() {
     // or null for a local notes file (nothing to share it with).
     const collection = () => (source.show ? source.show : source.source === 'live' && !demo ? 'live' : null);
     const { isVideo, probeDuration } = VideoFile;
+    const canUseLocalVideo = () => !!source.file && !demo;
     // Live notes and saved shows stay what they are; another notes file only
     // opens over a local one, or when nothing could be loaded.
     const canOpenNotes = () => !data || !!source.file;
 
-    function openFiles(files) {
+    async function openFiles(files) {
         $('demoBadge').hidden = true;
         $('fileError').hidden = true;
+        const notesFile = files.find(file => /\.json$/i.test(file.name));
+        if (notesFile && canOpenNotes() && !await openNotes(notesFile)) return;
         const videos = [];
         for (const file of files) {
-            if (/\.json$/i.test(file.name) && canOpenNotes()) openNotes(file);
-            else if (isVideo(file)) videos.push(file);
-            else showError(canOpenNotes() ? `"${file.name}" isn't a notes file or a video.` : `"${file.name}" isn't a video.`);
+            if (file === notesFile) continue;
+            if (isVideo(file) && canUseLocalVideo()) videos.push(file);
+            else showError(canUseLocalVideo() ? `"${file.name}" isn't a video.` : 'Add videos in Settings to share them with everyone.');
         }
-        if (videos.length) openLocalVideos(videos);
+        if (videos.length) await openLocalVideos(videos);
     }
 
-    function openNotes(file) {
-        const reader = new FileReader();
-        reader.onload = () => {
+    async function openNotes(file) {
+        try {
             let parsed;
-            try { parsed = JSON.parse(reader.result); } catch (error) { parsed = null; }
+            try { parsed = JSON.parse(await file.text()); } catch (error) { parsed = null; }
             if (!parsed || !Array.isArray(parsed.notes)) {
-                showError(`"${file.name}" isn't a notes file. Use "Download notes (JSON)" on the notes page.`);
-                return;
+                showError(`"${file.name}" isn't a notes file. Use "Download notes" on the notes page.`);
+                return false;
             }
             const key = C.saveFile(parsed, file.name, sessionStorage, C.newFileKey());
             if (!key) {
                 showError('There is not enough space to keep this file open between views. Try a smaller notes file.');
-                return;
+                return false;
             }
             if (socket) socket.disconnect();
             socket = null;
-            sharedParts = [];
             source = { file: key };
             returnTo = null;
             history.replaceState(null, '', C.playbackUrl(source));
             $('playbackTitle').textContent = file.name;
             updateNotesLink();
+            setParts('shared', []);
             loadNotes(parsed);
-        };
-        reader.onerror = () => showError(`"${file.name}" couldn't be opened.`);
-        reader.readAsText(file);
+            return true;
+        } catch (_) {
+            showError(`"${file.name}" couldn't be opened.`);
+            return false;
+        }
+    }
+
+    async function openLocalVideos(files) {
+        if (!canUseLocalVideo()) return;
+        const fileKey = source.file;
+        const request = ++localVideoRequest;
+        const parts = [];
+        for (const file of files) {
+            const url = URL.createObjectURL(file);
+            try {
+                const seconds = await probeDuration(url);
+                parts.push({ id: `local-${C.newFileKey()}`, name: file.name, startAt: T.vorStartFromName(file.name), duration: seconds, url });
+            } catch (_) {
+                URL.revokeObjectURL(url);
+                showError(`This browser can't play "${file.name}".`);
+            }
+        }
+        if (request !== localVideoRequest || source.file !== fileKey || !canUseLocalVideo()) {
+            parts.forEach(part => URL.revokeObjectURL(part.url));
+            return;
+        }
+        if (!parts.length) return;
+        requestedNoteId = selectedId || requestedNoteId;
+        setParts('local', parts);
+        setTimingOpen(!videoStart && !!data);
     }
 
     function loadNotes(parsed, preserveFilters = false) {
@@ -126,30 +155,6 @@ document.addEventListener('DOMContentLoaded', function() {
         setStatus('notesStatus', `${data.notes.length} notes`);
         $('openNotes').hidden = !canOpenNotes();
         ready();
-    }
-
-    // Videos from this device, as the parts of one recording. Vor's file
-    // names carry when each part started.
-    async function openLocalVideos(files) {
-        requestedNoteId = selectedId || requestedNoteId;
-        const parts = [];
-        for (const file of files) {
-            const url = URL.createObjectURL(file);
-            try {
-                const seconds = await probeDuration(url);
-                parts.push({ id: `local-${C.newFileKey()}`, name: file.name, startAt: T.vorStartFromName(file.name), duration: seconds, url });
-            } catch (error) {
-                URL.revokeObjectURL(url);
-                showError(`This browser can't play "${file.name}". Try Safari or Chrome.`);
-            }
-        }
-        if (!parts.length) return;
-        const name = parts[0].name;
-        if (!data) document.title = `${T.vorTitleFromName(name) || name} · Playback`;
-        setStatus('videoStatus', parts.length > 1 ? `${parts.length} video parts` : (T.vorTitleFromName(name) || name));
-        setParts('local', parts);
-        // Without a start time the notes can't be placed until it is matched by hand.
-        setTimingOpen(!videoStart && !!data);
     }
 
     function setStatus(id, text) {
@@ -181,7 +186,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function setParts(kind, parts) {
         const before = position();
         for (const old of recording.parts) {
-            if (old.url.startsWith('blob:') && !parts.some(p => p.url === old.url)) URL.revokeObjectURL(old.url);
+            if (old.url.startsWith('blob:') && !parts.some(part => part.url === old.url)) URL.revokeObjectURL(old.url);
         }
         recording = { kind: parts.length ? kind : null, collection: kind === 'shared' ? collection() : null, parts };
         relayout();
@@ -299,9 +304,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function applyShared(list) {
-        sharedParts = list.map(fromServer);
-        if (recording.kind !== 'local') setParts('shared', sharedParts);
-        else renderRecordingPanel();
+        setParts('shared', list.map(fromServer));
     }
 
     async function getRecordings(col) {
@@ -348,8 +351,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const wallText = (ms) => clockText(ms).slice(0, 8);
 
     function renderRecordingPanel() {
-        const kind = recording.kind;
-        const heading = kind === 'shared' ? 'Recording for these notes' : kind === 'local' ? 'Video from this device' : 'No recording yet';
+        const heading = recording.kind === 'sample' ? 'Sample video'
+            : canUseLocalVideo() ? 'Video from this device' : 'Video for these notes';
         const gapBefore = new Map(P.gaps(program).map(g => [g.to, g]));
         const rows = program.segments.map((s, i) => {
             const gap = gapBefore.get(s.offset);
@@ -360,21 +363,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     <span class="muted mono">${esc(when)}</span>
                     <span class="muted">${esc(videoTimeText(s.duration))}${esc(by)}${broken.has(s.id) ? ' · can\'t play here' : ''}</span></li>`;
         }).join('');
-        const actions = [
-            '<button type="button" class="btn outline" data-action="choose">Choose from this device</button>',
-            kind === 'local' && sharedParts.length ? '<button type="button" class="btn outline" data-action="use-shared">Watch the uploaded recording</button>' : ''
-        ].join('');
+        const col = collection();
+        const actions = col ? `<a class="btn outline" href="/config.html?recording=${encodeURIComponent(col)}#recordings">Manage video in Settings</a>`
+            : canUseLocalVideo() ? '<button type="button" class="btn outline" data-action="choose-video">Choose video from this device</button>' : '';
         setHtml($('recordingPanel'), `<strong>${esc(heading)}</strong>
             ${rows ? `<ul class="parts">${rows}</ul>` : ''}
             <div class="recording-actions">${actions}</div>`);
     }
 
     $('recordingPanel').addEventListener('click', (e) => {
-        const button = e.target.closest('button[data-action]');
-        if (!button) return;
-        const action = button.dataset.action;
-        if (action === 'choose') $('videoInput').click();
-        else if (action === 'use-shared') setParts('shared', sharedParts);
+        if (e.target.closest('[data-action="choose-video"]') && canUseLocalVideo()) $('videoInput').click();
     });
 
     function setRecordingOpen(open) {
@@ -385,16 +383,23 @@ document.addEventListener('DOMContentLoaded', function() {
         setMenuOpen(false);
         renderRecordingPanel();
         setRecordingOpen(true);
-        $('recordingPanel').querySelector('button').focus();
+        ($('recordingPanel').querySelector('a, button') || $('optionsToggle')).focus();
     });
 
-    // Keep the notes visible while the person chooses the recording.
+    // Keep the notes visible while a shared video is still to be added.
     function ready() {
         const hasVideo = recording.parts.length > 0;
         $('dropZone').hidden = !!data;
         $('player').hidden = !data;
         $('screen').hidden = !hasVideo;
         $('recordingPrompt').hidden = hasVideo;
+        const col = collection();
+        $('addRecordingLink').hidden = !col;
+        $('addRecordingLink').href = `/config.html?recording=${encodeURIComponent(col || 'live')}#recordings`;
+        $('chooseRecording').hidden = !canUseLocalVideo();
+        $('recordingPromptText').textContent = col ? 'Add a video in Settings for everyone to watch.'
+            : canUseLocalVideo() ? 'Choose a video to watch with this notes file. It stays on your device.'
+            : 'Open a saved show to watch its video.';
         track.closest('.timeline').hidden = !duration;
         $('timingToggle').hidden = !(data && hasVideo);
         if (!$('recordingPanel').hidden) renderRecordingPanel();
@@ -433,10 +438,9 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     $('closeHelp').addEventListener('click', () => { setHelpOpen(false); $('optionsToggle').focus(); });
     $('openNotes').addEventListener('click', () => { setMenuOpen(false); $('optionsToggle').focus(); $('notesInput').click(); });
-    $('chooseRecording').addEventListener('click', () => $('videoInput').click());
-    for (const id of ['notesInput', 'videoInput']) {
-        $(id).addEventListener('change', (e) => { openFiles([...e.target.files]); e.target.value = ''; });
-    }
+    $('notesInput').addEventListener('change', (e) => { openFiles([...e.target.files]); e.target.value = ''; });
+    $('chooseRecording').addEventListener('click', () => { if (canUseLocalVideo()) $('videoInput').click(); });
+    $('videoInput').addEventListener('change', (e) => { openFiles([...e.target.files]); e.target.value = ''; });
     // Files dropped anywhere on the page open.
     document.addEventListener('dragover', (e) => { e.preventDefault(); document.body.classList.add('drag-over'); });
     document.addEventListener('dragleave', (e) => { if (!e.relatedTarget) document.body.classList.remove('drag-over'); });
@@ -459,8 +463,7 @@ document.addEventListener('DOMContentLoaded', function() {
     async function loadSampleVideo() {
         const url = 'playback-demo/recording.mp4';
         const seconds = await probeDuration(url);
-        setStatus('videoStatus', 'Sample Show');
-        setParts('local', [{ id: 'sample', name: 'Sample Show.2026-10-07 19-30-00.mp4', startAt: Date.parse(data.showLog[0].at), duration: seconds, url }]);
+        setParts('sample', [{ id: 'sample', name: 'Sample Show.2026-10-07 19-30-00.mp4', startAt: Date.parse(data.showLog[0].at), duration: seconds, url }]);
         if (!requestedNoteId && !selectedId) seekTo(245);
     }
 
@@ -729,7 +732,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const list = placed.filter(shown);
         $('sideCount').textContent = list.length === placed.length ? `${placed.length}` : `${list.length} of ${placed.length}`;
         if (!list.length) {
-            const why = !videoStart ? 'Pause on a frame showing the clock, then choose Adjust timing in Playback options.'
+            const why = !data.notes.length ? 'No notes yet.'
+                : !recording.parts.length ? 'Add a video to see the notes alongside it.'
+                : !videoStart ? 'Pause on a frame showing the clock, then choose Adjust timing in Playback options.'
                 : !placed.length ? 'None of these notes were written during this video.'
                 : 'No notes with these tags.';
             setHtml($('sideList'), `<p class="side-empty muted">${esc(why)}</p>`);
