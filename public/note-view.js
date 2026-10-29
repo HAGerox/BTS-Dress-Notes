@@ -50,8 +50,11 @@
 
     // --- People ---
     function initials(name) {
-        const parts = String(name || '?').trim().split(/\s+/);
-        return ((parts[0] || '?')[0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
+        const letters = String(name || '').normalize('NFC').split(/\s+/)
+            .map(part => part.match(/\p{L}\p{M}*/u)?.[0]).filter(Boolean);
+        return letters.length
+            ? (letters[0] + (letters.length > 1 ? letters[letters.length - 1] : '')).toUpperCase()
+            : '?';
     }
 
     // A stable colour per person (keyed by their account), the same everywhere.

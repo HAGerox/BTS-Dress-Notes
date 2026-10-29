@@ -43,6 +43,26 @@ test('the same person gets the same face on every page', () => {
     assert.ok(NoteView.avatarHTML('sub-1', 'Ada', 'sm').startsWith('<span class="avatar sm"'));
 });
 
+test('avatar initials use letters, skipping punctuation, numbers and emoji', () => {
+    for (const [name, expected] of [
+        ['Alice (Dev)', 'AD'],
+        ['[Alice] {Dev}', 'AD'],
+        ['Alice - (Dev) !!!', 'AD'],
+        ['123 Alice 456', 'A'],
+        ['🎭 Alice 🛠 Dev 🎉', 'AD'],
+        ["Asher Marks-Woldman", 'AM'],
+        ["Mary O’Neill", 'MO'],
+        ['Élodie (Öst)', 'ÉÖ'],
+        ['E\u0301lodie (O\u0308st)', 'ÉÖ'],
+        ['李 小龍', '李小'],
+        ['!!! 123 🎭', '?'],
+        ['   ', '?'],
+        [null, '?']
+    ]) assert.strictEqual(NoteView.initials(name), expected, String(name));
+
+    assert.ok(NoteView.avatarHTML('sub-alice', 'Alice (Dev)').includes('>AD</span>'));
+});
+
 test('search and filters match the same way on both notes pages', () => {
     const tagById = (id) => ({ lx: { name: 'Lighting' } }[id] || NoteView.unknownTag(id));
     const note = { text: 'Too dark', user: 'Ada', act: 'Act 2', lxCue: '45', tags: ['lx'], comments: [{ user: 'Sam', text: 'fixed' }] };
